@@ -1,0 +1,11 @@
+{
+  "debug": false,
+  "sourceMaps": false,
+  "md5Cache": false,
+  "packages": {
+    "playable": {
+      "channel": "tiktok",
+      "orientation": "auto"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@cocos/pal-playable",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private-source playable advertisement build platform for Cocos CLI",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "files": [
+    "dist",
+    "static",
+    "i18n",
+    "runtime/playable.d.ts",
+    "README.md",
+    "docs/wechat-alignment.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "install:cli": "node scripts/install-cli.cjs"
+  },
+  "contributes": {
+    "builder": {
+      "register": true,
+      "platform": "playable",
+      "config": "./dist/config.cjs",
+      "hooks": "./dist/hooks.cjs"
+    }
+  },
+  "dependencies": {
+    "jszip": "3.10.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.5"
+  }
+}
