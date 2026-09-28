@@ -2,7 +2,8 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const JSZip = require('jszip');
-const { SDK_URL } = require('../src/channel.cjs');
+const { getChannel } = require('../src/channel.cjs');
+const SDK_URL = getChannel('tiktok').sdkURL;
 const archive = process.argv[2];
 if (!archive) throw new Error('Usage: node scripts/preview.cjs <tiktok.zip> [--mock-sdk]');
 const mock = process.argv.includes('--mock-sdk');

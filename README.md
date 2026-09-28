@@ -18,8 +18,9 @@ node D:/code/cocos-cli/dist/cli.js build -j <项目目录> -p playable -c <构�
 配置示例见 `examples/tiktok.build.json`；场景、引擎模块等继续使用工程构建配置。
 用户只进行一次 playable 构建，内部复用 HTML5/Web PAL，然后生成 ZIP。
 当前 cocos-cli 还需包含外部 HTML5 平台的 SystemJS 修复：在
-`src/core/builder/worker/builder/tasks/build-task/script.ts` 中，调用 `buildSystemJs` 时
-将 `platformType === 'HTML5'` 映射为 `web-mobile`，其他平台保持原值。
+任务层传递真实的 `platform` 和 `platformType`；
+`src/core/builder/worker/builder/asset-handler/script/build-script.ts` 的
+`buildSystemJsCommand()` 在调用旧版 module-system 时，将 HTML5 类型映射为其支持的 Web 加载器名称。
 否则现有 module-system 会为 playable 生成非浏览器加载器，导致黑屏。
 
 安装脚本复制编译产物到 CLI 的 `packages/platforms/playable`；不修改公共 CLI 源码。
@@ -72,3 +73,28 @@ node scripts/preview.cjs <tiktok.zip路径> --mock-sdk
 直接执行 `cocos build -p playable` 时，CLI 可能带入公共默认值 `sourceMaps: "inline"`。
 Playable 在 `onBeforeInit` 中将本次任务的 sourceMaps 设为 false，再初始化编译参数；
 不修改项目保存的配置，也不修改 debug 选项。无需为了这个默认值额外传配置文件。
+
+
+## 渠道与打包职责
+
+- src/hooks.cjs：连接 CLI 构建阶段，渲染 EJS 入口并交付打包。
+- src/channel.cjs：渠道注册与选项校验；当前仅注册 TikTok。
+- src/channels/tiktok.cjs：SDK 地址、方向文件、大小限制、外部引用例外和 TikTok 专用规则。
+- src/packaging/web-files.cjs：收集构建资源、校验包内引用及远程资源配置。
+- src/packaging/directory-zip.cjs：将文件集合编码为可复现的 ZIP。
+- src/package.cjs：按渠道选择打包器，管理输出目录、大小检查和校验报告。
+
+渠道分别声明 packageFormat 和 resourceMode；当前实现为 directory-zip + files。
+单 HTML 和内嵌资源加载尚未实现；新增渠道时还需要实现并验证对应运行时 SDK 适配，不能仅新增配置就视为支持。
+运行时仍由 runtime/playable.js 提供 TikTok 接口适配，与构建期 ZIP 编码分离。
+
+## 设备测试后修正
+
+TikTok SDK 使用已实测可访问的小写路径 `playable/sdk/playable-sdk.js`。
+2026-09-28，大写路径返回 404，小写路径返回 200；小写路径亦见官方 TikTok Ad Network 文档：
+https://ads.tiktok.com/resources/help/article/how-to-create-tiktok-pangle-playable-ads?lang=en
+平台在 onAfterInit 设置 appTemplateData.showFPS=false，关闭交付页面性能面板；保留 debug 编译选项。
+
+当前在线 SDK 请求 `__playable_ready_resources__.json`，读取相对路径数组并对照 Resource Timing 检查首屏加载；读取失败会报告加载监测错误。
+它不是游戏资源加载器，也不是 ZIP 文件列表。当前尚无经验证的首屏依赖清单生成规则，暂不生成该文件，report.pending 显式记录此项。
+不使用空数组伪造首屏完成，也不将可能按需加载的整个资源目录当作首屏清单；需结合官方验收确认清单生成责任。

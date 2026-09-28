@@ -27,6 +27,7 @@
     }
   },
   "dependencies": {
+    "ejs": "3.1.10",
     "jszip": "3.10.1"
   },
   "devDependencies": {

@@ -7,7 +7,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const JSZip = require('jszip');
 const { packageBuild } = require('../src/package.cjs');
-const { SDK_URL, readOptions } = require('../src/channel.cjs');
+const { getChannel, readOptions } = require('../src/channel.cjs');
+const SDK_URL = getChannel('tiktok').sdkURL;
 function fixture(t) {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'playable-test-'));
   t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
@@ -96,4 +97,21 @@ test('build hook accepts CLI source-map defaults and normalizes before compilati
     assert.equal(options.debug, true);
   }
   assert.throws(() => hooks.onBeforeInit({ server: 'https://example.com' }), /external asset server/);
+});
+
+
+test('channel validation rejects missing SDK and incorrect SDK ordering', async t => {
+  const root = fixture(t);
+  fs.writeFileSync(path.join(root, 'index.html'), '<script src="./playable-runtime.js"></script>');
+  await assert.rejects(packageBuild(root, 'tiktok'), /Missing official TikTok SDK/);
+  fs.appendFileSync(path.join(root, 'index.html'), '<script src="' + SDK_URL + '"></script>');
+  await assert.rejects(packageBuild(root, 'tiktok'), /SDK must load before runtime/);
+});
+
+test('unsupported channel cannot invalidate an existing delivery', async t => {
+  const root = fixture(t);
+  const report = await packageBuild(root, 'tiktok');
+  const before = fs.readFileSync(report.archive);
+  await assert.rejects(packageBuild(root, 'applovin'), /Unsupported playable channel/);
+  assert.deepEqual(fs.readFileSync(report.archive), before);
 });

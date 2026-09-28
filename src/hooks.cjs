@@ -1,7 +1,8 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const { SDK_URL, orientations, readOptions } = require('./channel.cjs');
+const Ejs = require('ejs');
+const { getChannel, readOptions } = require('./channel.cjs');
 const { packageBuild } = require('./package.cjs');
 exports.throwError = true;
 exports.onBeforeInit = function (options) {
@@ -14,6 +15,8 @@ exports.onBeforeInit = function (options) {
   options.sourceMaps = false;
 };
 exports.onAfterInit = function (options) {
+  // Hide the delivery overlay without changing the project debug compilation option.
+  options.appTemplateData.showFPS = false;
   options.buildEngineParam.split = false;
   options.buildEngineParam.assetURLFormat = 'runtime-resolved';
 };
@@ -29,47 +32,41 @@ exports.onBeforeCompressSettings = function (options, result) {
     throw new Error('Remote bundles are not supported in playable builds');
   }
 };
-function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
 exports.onBeforeCopyBuildTemplate = async function (options, result) {
   const root = result.paths.dir;
+  const channel = getChannel(readOptions(options).channel);
   const url = target => './' + path.relative(root, target).split(path.sep).map(encodeURIComponent).join('/');
-  const app = url(result.paths.applicationJS);
-  const bootstrap = 'import { Application } from ' + JSON.stringify(app) + ';\n' +
-    'const canvas = document.getElementById("GameCanvas");\n' +
-    'const size = canvas.parentElement.getBoundingClientRect(); canvas.width = size.width; canvas.height = size.height;\n' +
-    'const application = new Application();\n' +
-    'System.import("cc").then(engine => application.init(engine)).then(() => application.start()).catch(console.error);';
+  const templateDir = path.join(__dirname, '../static/templates');
+  const bootstrap = await Ejs.renderFile(path.join(templateDir, 'index.js.ejs'), {
+    applicationURL: JSON.stringify(url(result.paths.applicationJS)),
+  });
   const transformed = await this.utils.transformCode(bootstrap, { importMapFormat: 'systemjs' });
   if (!transformed) throw new Error('Could not compile playable bootstrap');
-  fs.writeFileSync(path.join(root, 'index.js'), transformed);
-  fs.copyFileSync(path.join(__dirname, 'playable-runtime.js'), path.join(root, 'playable-runtime.js'));
-  const templateDir = path.join(__dirname, '../static/templates');
-  fs.copyFileSync(path.join(templateDir, 'style.css'), path.join(root, 'style.css'));
-  const scripts = [
-    '<script src="' + SDK_URL + '"></script>',
-    '<script src="./playable-runtime.js"></script>',
-    result.paths.polyfillsJs ? '<script src="' + escapeHTML(url(result.paths.polyfillsJs)) + '"></script>' : '',
-    '<script src="' + escapeHTML(url(result.paths.systemJs)) + '"></script>',
-    '<script type="systemjs-importmap" src="' + escapeHTML(url(result.paths.importMap)) + '"></script>',
-    '<script>System.import("./index.js").catch(console.error);</script>',
-  ].join('\n');
   result.paths.indexJs = path.join(root, 'index.js');
   result.paths.indexHTML = path.join(root, 'index.html');
-  const template = fs.readFileSync(path.join(templateDir, 'index.html'), 'utf8');
-  const values = { title: escapeHTML(options.name || 'Playable'), scripts };
-  fs.writeFileSync(result.paths.indexHTML, template.replace(/\{\{(title|scripts)\}\}/g, (_, key) => values[key]));
+  fs.writeFileSync(result.paths.indexJs, transformed);
+  fs.copyFileSync(path.join(__dirname, 'playable-runtime.js'), path.join(root, 'playable-runtime.js'));
+  fs.copyFileSync(path.join(templateDir, 'style.css'), path.join(root, 'style.css'));
+  fs.writeFileSync(result.paths.indexHTML, await Ejs.renderFile(path.join(templateDir, 'index.ejs'), {
+    title: options.name || 'Playable',
+    sdkURL: channel.sdkURL,
+    polyfillsURL: result.paths.polyfillsJs ? url(result.paths.polyfillsJs) : '',
+    systemURL: url(result.paths.systemJs),
+    importMapURL: url(result.paths.importMap),
+  }));
   options.md5CacheOptions.includes.push('index.js', 'style.css');
-  options.md5CacheOptions.excludes.push('playable-runtime.js', 'config.json');
+  options.md5CacheOptions.excludes.push('playable-runtime.js', ...channel.extraRootFiles);
   options.md5CacheOptions.replaceOnly.push('index.html');
 };
 exports.onAfterBuild = async function (options, result) {
   const settings = readOptions(options);
   result.settings.plugins.jsList = result.settings.plugins.jsList.map(url => url.split('/').map(encodeURIComponent).join('/'));
   fs.writeFileSync(result.paths.settings, JSON.stringify(result.settings));
-  fs.writeFileSync(path.join(result.paths.dir, 'config.json'), JSON.stringify({ Playable_orientation: orientations[settings.orientation] }));
-  const report = await packageBuild(result.paths.dir);
+  const channel = getChannel(settings.channel);
+  for (const file of channel.createFiles(settings)) {
+    fs.writeFileSync(path.join(result.paths.dir, file.name), file.data);
+  }
+  const report = await packageBuild(result.paths.dir, channel.id);
   this.buildExitRes.custom = { ...(this.buildExitRes.custom || {}), playable: report };
-  console.log('[Playable] TikTok ZIP: ' + report.archive);
+  console.log('[Playable] ' + channel.displayName + ' ZIP: ' + report.archive);
 };
