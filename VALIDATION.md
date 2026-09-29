@@ -65,3 +65,56 @@ TikTok SDK、方向文件、大小限制及专用规则移入 src/channels/tikto
 - ai-runtime 从新 ZIP 内存解包并直接提供 HTTP 响应，未替换 HTML/SDK、未添加 mock。CDP 检查：openAppStore 为 function，playableSDK.isReady() 为 true，场景为 game，profiler.isShowingStats() 为 false。此次未重新验证实际跳转。
 - 在线 SDK 源码表明 __playable_ready_resources__.json 用于首屏资源加载监测，文件缺失会报告监测错误；不是游戏加载依赖。本轮暂不生成未经验证的首屏清单，已加入 report.pending，仍需官方验收确认。
 - 本轮未新增测试脚本文件；诊断与产物检查通过内存执行。官方预览、全流程玩法、音频/生命周期、安全区仍未完成。
+
+## 2026-09-29：Pangle 测试 APK 补测
+
+验收范围按约定以测试 APK 为主。通过 ai-runtime 内存服务加载上述 SHA-256 为 c6ea3633…d65184 的原始 ZIP，未替换 SDK、未使用 mock、未修改场景状态、未落地测试脚本。本次为 Android 模拟器结果，不代表 TikTok 后台审核或物理真机验收。
+
+| 项目 | 结果与证据 |
+| --- | --- |
+| 启动与 SDK | 场景 game 加载，openAppStore 为 function，SDK isReady 为 true，FPS 面板关闭。 |
+| DOWNLOAD 跳转 | 实际点击按钮，Android VIEW Intent 指向 https://example.com/，Chrome 成为前台；返回后游戏恢复。仅测试链接，未测试真实商店安装。 |
+| 前后台 | 下载跳转触发 pause/mute，返回触发 resume；Home 后 game.isPaused 为 true，间隔读取帧数均为 5346；从最近任务恢复后为 false，帧数由 5394 增长至 5456，场景仍为 game。 |
+| 容器静音 | 存在缺口：点击 APK 喇叭，官方 SDK isMuted 返回 false → true → false，但 playable.onMuteChange 仅保留初次回调 false，未收到容器切换。当前接口只覆盖首次触摸及页面可见性。不能据此认定实际音频未静音，官方 SDK 还有音频处理；听感及实际游戏音效尚未验收。 |
+| 完整玩法 | 被 demo 初始启用的 DownloadView 遮挡，结算页与新手引导叠加；未完成旋转、发射到自然结算的完整流程。保留用户场景修改。 |
+| 方向与布局 | APK 竖屏、横屏均能渲染，横屏为竖版内容居中，两侧留白较大；结算页与引导叠加仍存在。仅确认显示，未认定横屏体验、安全区通过。 |
+| 首屏资源监测 | __playable_ready_resources__.json 仍返回 404，延续上一轮待确认项。 |
+
+阶段结论：启动、下载测试链接、基本前后台暂停恢复通过；完整玩法、容器静音通知与音频体验、布局仍有待处理项，不能标记为全部验收通过。下一步优先修正 demo 初始结算页配置，并补齐官方 SDK 静音事件到统一接口的映射后复测。本次仅追加验证记录，未修改实现、提交或推送。
+
+## 2026-09-29：遮罩与容器静音修复复验
+
+- demo 仅将 game.scene 的 DownloadView 初始 active 改为 false，保留其他已有场景改动。
+- runtime 订阅官方 playableSDK 的 muteChange({ muted })，查询初始 isMuted()；保留首次触摸、后台静音规则，并防止旧异步查询覆盖较新的事件。containerLifecycle 能力仍为 false，没有扩展暂停接口承诺。
+- 现有 11 项测试通过；通过 ai-runtime 内存运行的断言验证 SDK 事件、异步查询竞争、后台优先级和退订，未落地测试代码。
+- 插件编译、安装、真实 demo 构建成功。新 ZIP：4,846,897 字节，SHA-256 e933983b4449d82f9c9577fde69f1c1b35755935342c143f142439b2eb6d319b。
+- APK 加载此 ZIP 原始文件后 DownloadView 初始 false。真实拖动旋转、点击发射、连续发射自然触发结束页；未改分数或手动触发结束事件。本次分数为 0，覆盖游戏结束分支，未覆盖 93 分胜利分支。结束页与新手引导不再叠加。
+- 首次交互前统一接口回调 true；交互后 false；实际点 APK 喇叭时，官方状态 true/false 对应统一接口序列 [true, false, true, false]，静音映射通过。
+- 结束页 DOWNLOAD 实际点击后，Android VIEW Intent 指向 https://example.com/，Chrome 成为前台；切回后 hidden=false、game.isPaused=false、scene=game。浏览器出现离线提示，本项仅验跳转，不验目标网络可用性或商店安装。
+- 诊断监听已移除。本轮未提交、未推送。音效听感、胜利分支、横屏体验/安全区及首屏资源清单仍待验证，前述未通过项按本节结果更新。
+
+## 2026-09-29：公共运行时与 TikTok 适配器拆分
+
+- 新增 runtime/core.cjs 和 runtime/adapters/tiktok.cjs，runtime/playable.js 仅组合二者。分发仍为单个 playable-runtime.js，无新增运行时全局注册表。
+- 游戏接口增加 channel、ready、onReady；SDK 就绪不代表资源就绪或可展示。晚订阅立即调用，等待中的订阅支持退订。下载、结束、暂停恢复、静音的游戏调用保持不变。
+- 现有 11 项测试通过；仅调整已有测试的入口与 SDK fixture 以对应模块拆分。未新增诊断脚本。额外在 ai-runtime 内存验证公共层可独立使用替代适配器、就绪单次通知/晚订阅/退订及结束幂等。
+- 编译、安装、demo CLI 构建通过。ZIP 4,847,300 字节，SHA-256 63402cfa18e9f70f5e76f2f44d777d9ea3991885984b939d3e94b40308d4a114。
+- APK 从新 ZIP 原样加载，曾一次未加载到远端 SDK，运行时明确报 SDK unavailable；重新加载后 SDK 正常，channel=tiktok、ready=true，onReady 晚订阅收到一次通知。
+- 实际拖动、点击发射后第 6 次发射自然进入结束页；SDK 静音开关对应统一事件 true/false；实际点击结束页 DOWNLOAD，Android VIEW Intent 指向 https://example.com/。
+- 跳转后 hidden=true、game.isPaused=true、收到 pause/mute；返回后 hidden=false、game.isPaused=false、收到 resume/unmute。临时监听已退订清理。
+- finishNotification 与 containerLifecycle 仍为 false；未接入其他渠道、SDK 展示事件、通用埋点或自动启动门控。音效听感、胜利分支、安全区和首屏资源清单沿用待验证项。未提交或推送。
+
+## TypeScript 运行时迁移
+
+- 公共层 core.ts、适配器 adapters/tiktok.ts、入口 index.ts；内部契约 adapter.ts。公共层直接实现现有 PlayableAPI 声明，SDK 回调与返回值显式类型化。
+- 新增 TypeScript 5.9.3 开发依赖及严格 tsconfig；构建先 tsc --noEmit，再 esbuild 打包。SDK 能力与游戏接口保持原约定，构建期 CJS 脚本不变。
+- npm test（含严格类型检查、运行时打包和原有 11 项测试）通过，插件已重新安装到本地 CLI。未新增测试文件。本轮未重建 demo ZIP、未重复 APK 验证；上节 APK 结果对应迁移前 ZIP。未提交、未推送。
+
+## 全仓 TypeScript 迁移
+
+- src 构建钩子、渠道规则、资源检查与 ZIP 打包，scripts 构建/安装/预览工具，i18n 多语言源文件及原有 tests 全部改用 TypeScript。入口模板改名 index.ts.ejs。新增构建边界类型，不使用 any、ts-ignore 或关闭严格检查绕过迁移。
+- npm run build / test / install:cli / preview 使用 tsx；tsc --noEmit 覆盖运行时、插件源码、脚本、多语言和既有测试。dist/*.cjs、dist/playable-runtime.js 以及 i18n/*.js 为生成产物，i18n JS 带生成标记，维护对应 .ts。
+- 严格检查和原有 11 项测试通过；安装到本地 CLI，真实 demo 完整构建通过。npm pack --dry-run 确认实现 TS、测试和开发脚本未进入分发；保留游戏类型声明及入口模板。
+- 通过 ai-runtime 内存诊断启动 TypeScript 预览工具，验证 HTTP 页面、mock SDK 和产物运行时能初始化 ready=true/channel=tiktok；测试后停止预览进程，未新增测试文件。mock SDK 补齐了就绪接口，以适配中间层。
+- 本轮未重复 APK 验证，未提交、未推送。
+产物：4847334 字节，SHA-256 257c39d7a652c61cead0d5cc1f0ce583b5f1fefa457cbbbfe1307c1600dd4cee。

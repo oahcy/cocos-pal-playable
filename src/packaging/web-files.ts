@@ -1,11 +1,11 @@
-'use strict';
-const fs = require('node:fs');
-const path = require('node:path');
+import type { Entry, Channel } from '../types';
+import fs from 'node:fs';
+import path from 'node:path';
 const roots = new Set(['assets', 'cocos-js', 'src']);
 const rootFile = /^(?:index(?:\.[\da-f]+)?\.js|application(?:\.[\da-f]+)?\.js|style(?:\.[\da-f]+)?\.css|index\.html|playable-runtime\.js)$/i;
-function collect(root, channel) {
-  const entries = [];
-  function walk(directory, prefix) {
+function collect(root: string, channel: Channel) {
+  const entries: Entry[] = [];
+  function walk(directory: string, prefix: string) {
     for (const item of fs.readdirSync(directory, { withFileTypes: true })) {
       const name = prefix + item.name;
       if (item.isSymbolicLink()) throw new Error('Symlinks are not allowed: ' + name);
@@ -19,13 +19,13 @@ function collect(root, channel) {
   walk(root, '');
   return entries.sort((a, b) => a.name.localeCompare(b.name, 'en'));
 }
-function validate(entries, channel) {
+function validate(entries: Entry[], channel: Channel) {
   const byName = new Map(entries.map(entry => [entry.name, entry.data]));
   for (const name of ['index.html', 'playable-runtime.js']) {
     if (!byName.has(name)) throw new Error('Missing required file: ' + name);
   }
   channel.validate(entries);
-  function reference(from, value) {
+  function reference(from: string, value: string) {
     if (!value || /^(?:data:|blob:|#)/i.test(value)) return;
     if (channel.allowsReference(from, value)) return;
     if (/^(?:[a-z][a-z\d+.-]*:|\/\/|\/)/i.test(value)) throw new Error('External or absolute reference in ' + from + ': ' + value);
@@ -42,7 +42,7 @@ function validate(entries, channel) {
       for (const match of text.matchAll(/url\(\s*["']?([^"')\s]+)["']?\s*\)/gi)) reference(entry.name, match[1]);
     }
     if (/import-map.*\.json$/i.test(entry.name)) {
-      const map = JSON.parse(text);
+      const map = JSON.parse(text) as { imports?: Record<string, string>; scopes?: Record<string, Record<string, string>> };
       for (const values of [map.imports || {}, ...Object.values(map.scopes || {})]) {
         for (const value of Object.values(values)) reference(entry.name, value);
       }
@@ -54,4 +54,4 @@ function validate(entries, channel) {
   }
 }
 
-module.exports = { collect, validate };
+export { collect, validate };

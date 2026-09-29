@@ -1,10 +1,9 @@
-'use strict';
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 const source = path.resolve(__dirname, '..');
 const root = path.resolve(process.argv[2] || '');
-if (!process.argv[2] || JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).name !== 'cocos-cli') {
-  throw new Error('Usage: node scripts/install-cli.cjs <cocos-cli-root>');
+if (!process.argv[2] || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).name !== 'cocos-cli') {
+  throw new Error('Usage: npx tsx scripts/install-cli.ts <cocos-cli-root>');
 }
 const target = path.join(root, 'packages/platforms/playable');
 if (!fs.existsSync(path.join(source, 'dist/hooks.cjs'))) throw new Error('Run npm run build first');
@@ -14,7 +13,7 @@ for (const part of ['packages', 'packages/platforms', 'packages/platforms/playab
 }
 if (fs.existsSync(target)) {
   const manifest = path.join(target, 'package.json');
-  if (!fs.existsSync(manifest) || JSON.parse(fs.readFileSync(manifest)).name !== '@cocos/pal-playable') {
+  if (!fs.existsSync(manifest) || JSON.parse(fs.readFileSync(manifest, 'utf8')).name !== '@cocos/pal-playable') {
     throw new Error('Another plugin already owns ' + target);
   }
 }
@@ -25,12 +24,12 @@ if (fs.realpathSync(source) === (fs.existsSync(target) ? fs.realpathSync(target)
 fs.mkdirSync(target, { recursive: true });
 fs.cpSync(path.join(source, 'dist'), path.join(target, 'dist'), { recursive: true });
 for (const directory of ['static', 'i18n', 'docs']) {
-  fs.cpSync(path.join(source, directory), path.join(target, directory), { recursive: true });
+  fs.cpSync(path.join(source, directory), path.join(target, directory), { recursive: true, filter: file => !file.endsWith('.ts') });
 }
 fs.mkdirSync(path.join(target, 'runtime'), { recursive: true });
 fs.copyFileSync(path.join(source, 'runtime/playable.d.ts'), path.join(target, 'runtime/playable.d.ts'));
 fs.copyFileSync(path.join(source, 'README.md'), path.join(target, 'README.md'));
-const manifest = JSON.parse(fs.readFileSync(path.join(source, 'package.json')));
+const manifest = JSON.parse(fs.readFileSync(path.join(source, 'package.json'), 'utf8'));
 delete manifest.dependencies;
 delete manifest.devDependencies;
 delete manifest.scripts;

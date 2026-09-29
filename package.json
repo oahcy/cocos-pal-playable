@@ -8,15 +8,17 @@
   "files": [
     "dist",
     "static",
-    "i18n",
+    "i18n/*.js",
     "runtime/playable.d.ts",
     "README.md",
     "docs/wechat-alignment.md"
   ],
   "scripts": {
-    "build": "node scripts/build.cjs",
-    "test": "node --test tests/*.test.cjs",
-    "install:cli": "node scripts/install-cli.cjs"
+    "build": "tsx scripts/build.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/build.ts && tsx --test tests/*.test.ts",
+    "install:cli": "tsx scripts/install-cli.ts",
+    "preview": "tsx scripts/preview.ts"
   },
   "contributes": {
     "builder": {
@@ -31,6 +33,10 @@
     "jszip": "3.10.1"
   },
   "devDependencies": {
-    "esbuild": "0.25.5"
+    "@types/ejs": "3.1.5",
+    "@types/node": "22.20.4",
+    "esbuild": "0.25.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
   }
 }

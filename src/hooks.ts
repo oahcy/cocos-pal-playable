@@ -1,11 +1,11 @@
-'use strict';
-const fs = require('node:fs');
-const path = require('node:path');
-const Ejs = require('ejs');
-const { getChannel, readOptions } = require('./channel.cjs');
-const { packageBuild } = require('./package.cjs');
-exports.throwError = true;
-exports.onBeforeInit = function (options) {
+import type { BuildOptions, InitializedOptions, BuildResult, BuildContext } from './types';
+import fs from 'node:fs';
+import path from 'node:path';
+import Ejs from 'ejs';
+import { getChannel, readOptions } from './channel';
+import { packageBuild } from './package';
+export const throwError = true;
+export function onBeforeInit(options: BuildOptions) {
   readOptions(options);
   if (options.server) throw new Error('Playable does not support an external asset server');
   // CLI defaults or saved project settings may enable inline maps; normalize before compiler parameters are initialized.
@@ -14,30 +14,30 @@ exports.onBeforeInit = function (options) {
   }
   options.sourceMaps = false;
 };
-exports.onAfterInit = function (options) {
+export function onAfterInit(options: InitializedOptions) {
   // Hide the delivery overlay without changing the project debug compilation option.
   options.appTemplateData.showFPS = false;
   options.buildEngineParam.split = false;
   options.buildEngineParam.assetURLFormat = 'runtime-resolved';
 };
-exports.onAfterBundleInit = function (options) {
+export function onAfterBundleInit(options: InitializedOptions) {
   options.buildScriptParam.system = { preset: 'web' };
   options.buildScriptParam.flags.WEBGPU = false;
   const index = options.includeModules.indexOf('gfx-webgpu');
   if (index >= 0) options.includeModules.splice(index, 1);
 };
-exports.onBeforeCompressSettings = function (options, result) {
+export function onBeforeCompressSettings(options: BuildOptions, result: BuildResult) {
   result.settings.screen.orientation = readOptions(options).orientation;
   if (result.settings.assets.server || result.settings.assets.remoteBundles?.length) {
     throw new Error('Remote bundles are not supported in playable builds');
   }
 };
-exports.onBeforeCopyBuildTemplate = async function (options, result) {
+export async function onBeforeCopyBuildTemplate(this: BuildContext, options: InitializedOptions, result: BuildResult) {
   const root = result.paths.dir;
   const channel = getChannel(readOptions(options).channel);
-  const url = target => './' + path.relative(root, target).split(path.sep).map(encodeURIComponent).join('/');
+  const url = (target: string) => './' + path.relative(root, target).split(path.sep).map(encodeURIComponent).join('/');
   const templateDir = path.join(__dirname, '../static/templates');
-  const bootstrap = await Ejs.renderFile(path.join(templateDir, 'index.js.ejs'), {
+  const bootstrap = await Ejs.renderFile(path.join(templateDir, 'index.ts.ejs'), {
     applicationURL: JSON.stringify(url(result.paths.applicationJS)),
   });
   const transformed = await this.utils.transformCode(bootstrap, { importMapFormat: 'systemjs' });
@@ -58,7 +58,7 @@ exports.onBeforeCopyBuildTemplate = async function (options, result) {
   options.md5CacheOptions.excludes.push('playable-runtime.js', ...channel.extraRootFiles);
   options.md5CacheOptions.replaceOnly.push('index.html');
 };
-exports.onAfterBuild = async function (options, result) {
+export async function onAfterBuild(this: BuildContext, options: BuildOptions, result: BuildResult) {
   const settings = readOptions(options);
   result.settings.plugins.jsList = result.settings.plugins.jsList.map(url => url.split('/').map(encodeURIComponent).join('/'));
   fs.writeFileSync(result.paths.settings, JSON.stringify(result.settings));

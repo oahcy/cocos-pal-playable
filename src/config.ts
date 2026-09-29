@@ -1,6 +1,5 @@
-'use strict';
-const { channelIds } = require('./channel.cjs');
-exports.default = {
+import { channelIds } from './channel';
+export default {
   displayName: 'i18n:playable.title', platformType: 'HTML5',
   textureCompressConfig: { platformType: 'web', support: { rgb: [], rgba: [] } },
   assetBundleConfig: { supportedCompressionTypes: ['none', 'merge_dep', 'merge_all_json'], platformType: 'web' },
