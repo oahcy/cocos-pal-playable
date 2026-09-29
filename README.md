@@ -40,7 +40,7 @@ node D:/code/cocos-cli/dist/cli.js build -j <项目目录> -p playable -c <构�
 按钮、结束 UI 由业务实现；`finish()` 幂等调用 TikTok SDK 的 `sendEvent("finishPlayPlayable")`，不自动跳转。
 请在真实用户点击回调中调用 openStore。
 运行时合并浏览器和容器可见性，启动模块控制广告暂停，业务接入静音事件；
-APK 已验证启动、首次交互静音策略和容器生命周期；音效听感、安全区和官方后台仍需验证。
+APK 已验证启动、首次交互静音策略和容器生命周期；用户已确认能听到音效；demo 常驻按钮遮挡、官方安全区和广告后台仍待处理。
 不提供假下载跳转或自动 mock SDK；普通浏览器中 SDK 缺失会明确报错。
 
 静态校验覆盖 ZIP 大小、方向、必要入口、HTML/CSS 引用、导入映射、
@@ -131,3 +131,5 @@ init 每个页面调用一次，适配器将官方回调转换为 sink 通知。
 运行时源码使用 TypeScript；内部契约见 runtime/adapter.ts，游戏接口使用 runtime/playable.d.ts，公共层返回值直接受该声明约束。构建先执行 tsc --noEmit 严格类型检查，再用 esbuild 输出浏览器 IIFE；构建插件、脚本、多语言及已有测试同样使用 TypeScript，由 tsx 执行开发工具。
 
 启动模板只装配 Application 与 System.import；runtime/startup.ts 接受严格类型检查，在 onPostProjectInitDelegate 中预加载启动场景、等待 SDK 就绪和 viewable=true，然后沿用 Application.start 的 game.run。广告层记录暂停归属，只恢复自己暂停的主循环；业务预先暂停时不接管。隐藏期间业务新增 game.pause 无法从布尔状态区分，仍需项目协调，菜单可独立使用 director.pause/resume。内部 __startPlayable 不是游戏 SDK 接口。启动错误显示通用失败提示，详细原因留在控制台；公共订阅回调异常逐个隔离，避免阻断后续通知。
+
+首版构建、游戏接入与验收边界见 [交付说明](docs/DELIVERY.md)。

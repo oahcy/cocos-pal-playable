@@ -140,3 +140,14 @@ TikTok SDK、方向文件、大小限制及专用规则移入 src/channels/tikto
 - Pangle APK 重新启动加载新 ZIP：game 场景可见，ready/viewable=true，无启动失败提示；实际切后台 viewable=false/paused=true，返回 true/false。
 - 通过调试调用 game.pause 模拟业务暂停后，再实际切后台/返回，viewable=true 时 paused 仍为 true。测试后已主动恢复，未修改产物或 SDK。
 - 设计文档本期范围收敛为 TikTok；其他渠道仅保留扩展方向。本轮未重测下载/自然结束、听感或胜利分支。未提交或推送。
+
+## 首版补验（2026-09-29）
+
+当前整理已提交 b85bade，未推送。本轮未修改平台运行时代码或 ZIP，测试使用上一节 516e8c... 产物。
+
+- 用户先表示无法确认，随后明确回复“听到了”：记录为能听到音效，不额外声称音质测量通过。
+- APK 实际旋转、换色、发射，分数 31/64/73/87/118，经过93分进入胜利页；一次 finishPlayPlayable。没有修改分数或强制结束；临时 sendEvent 包装已恢复。
+- 竖屏重新加载同包；视频阶段 viewable=false 且无 game 场景，点击试玩后场景启动。实际发射后自然失败进入结束页。
+- 横竖屏都发现常驻 Download 与换色按钮、底部装饰重叠；结束页 CTA 可见。APK 控件未覆盖结束页 CTA，但不代表 TikTok 官方安全区通过。
+- 复核官方文档及当前 SDK，首屏资源清单是加载监测输入，未发现公开生成约定；保持待确认，不添加假清单。
+- 完整交付命令、游戏接口、验收范围及剩余项见 docs/DELIVERY.md。本轮诊断均在 ai-runtime 内存执行，无新增测试脚本。
