@@ -37,10 +37,10 @@ node D:/code/cocos-cli/dist/cli.js build -j <项目目录> -p playable -c <构�
 发布流水线验证钩子顺序后才能作为正式交付能力。
 
 支持方向 auto/portrait/landscape、官方 SDK、统一 `playable.openStore()`。
-按钮、结束 UI 由业务实现；`finish()` 是幂等本地标记，不向 TikTok 虚构结束协议。
+按钮、结束 UI 由业务实现；`finish()` 幂等调用 TikTok SDK 的 `sendEvent("finishPlayPlayable")`，不自动跳转。
 请在真实用户点击回调中调用 openStore。
-运行时提供浏览器可见性与静音事件基础接口，业务需接入暂停和音频控制；
-首次交互前静音、真实容器生命周期、安全区和官方预览仍需验证。
+运行时合并浏览器和容器可见性，启动模块控制广告暂停，业务接入静音事件；
+APK 已验证启动、首次交互静音策略和容器生命周期；音效听感、安全区和官方后台仍需验证。
 不提供假下载跳转或自动 mock SDK；普通浏览器中 SDK 缺失会明确报错。
 
 静态校验覆盖 ZIP 大小、方向、必要入口、HTML/CSS 引用、导入映射、
@@ -106,9 +106,9 @@ https://ads.tiktok.com/resources/help/article/how-to-create-tiktok-pangle-playab
 - channel：构建渠道标识。
 - ready / onReady(callback)：仅表示 SDK 可用；已就绪时同步调用，未就绪时订阅一次，返回退订函数。不代表游戏资源已加载或容器允许展示，也不自动启动玩法。
 - openStore()：只在用户操作时调用，交给适配器；失败抛错，不自行网页跳转、不伪造暂停事件。
-- finish()：幂等，不跳转、不绘制结束页；finishNotification=false 时仅本地记录。
-- onPause / onResume：当前仅页面可见性变化，订阅后通知未来变化。containerLifecycle=false 表示尚未接入容器生命周期。
-- onMuteChange：订阅时立即给出状态；首次触摸前、页面隐藏或 SDK 静音时应静音。解除限制不覆盖游戏自己的静音设置。
+- finish()：幂等，不跳转、不绘制结束页；TikTok 调用官方 SDK sendEvent("finishPlayPlayable")。游戏自然结束时调用，下载按钮只调用 openStore()。这是结束通知，不代表服务端已确认接收。
+- viewable / onPause / onResume：合并页面可见性与 SDK visibilityChange / isViewable；两者都允许展示才恢复。查询未完成时不可展示，订阅只通知后续变化；重复状态不重复通知。TikTok containerLifecycle=true。
+- onMuteChange：订阅时立即给出状态；首次触摸前、页面/容器隐藏或 SDK 静音时应静音。解除限制不覆盖游戏自己的静音设置。
 
 内部适配器契约（首版）：
 
@@ -120,12 +120,14 @@ interface ChannelAdapter {
     finishNotification: boolean;
     containerLifecycle: boolean;
   };
-  init(sink: { ready(): void; mute(value: boolean): void }): void;
+  init(sink: { ready(): void; mute(value: boolean): void; viewable(value: boolean): void; error(error: Error): void }): void;
   openStore(): void;
   finish?(): void; // finishNotification=true 时必须提供
 }
 ```
 
-init 每个页面调用一次，适配器将官方回调转换为 sink 通知。TikTok SDK 按模板先同步加载，isReady() 不为 true 或缺少 SDK 时初始化明确抛错，不将其视为浏览器预览。当前不实现异步 SDK 加载、官方展示事件与通用埋点；未来有实际渠道需求再扩展 sink。测试仍保留原有 11 项用例，仅调整模块拆分后的测试加载入口；额外诊断断言在 ai-runtime 内存执行。
+init 每个页面调用一次，适配器将官方回调转换为 sink 通知。TikTok SDK 按模板先同步加载，isReady() 不为 true 或缺少 SDK 时初始化明确抛错，不将其视为浏览器预览。初始展示状态使用 isViewable() 查询，后续订阅 visibilityChange，较早发出的查询不得覆盖较新的事件。查询失败或响应类型无效时，通过内部 error 通知终止启动并显示失败提示；较新展示事件已提供有效状态时，忽略旧查询的失败。正常不可展示状态继续等待，不设置强行放行的超时。当前不实现异步 SDK 加载与通用埋点。测试仍保留原有 11 项用例，仅调整模块拆分后的测试加载入口；额外诊断断言在 ai-runtime 内存执行。
 
 运行时源码使用 TypeScript；内部契约见 runtime/adapter.ts，游戏接口使用 runtime/playable.d.ts，公共层返回值直接受该声明约束。构建先执行 tsc --noEmit 严格类型检查，再用 esbuild 输出浏览器 IIFE；构建插件、脚本、多语言及已有测试同样使用 TypeScript，由 tsx 执行开发工具。
+
+启动模板只装配 Application 与 System.import；runtime/startup.ts 接受严格类型检查，在 onPostProjectInitDelegate 中预加载启动场景、等待 SDK 就绪和 viewable=true，然后沿用 Application.start 的 game.run。广告层记录暂停归属，只恢复自己暂停的主循环；业务预先暂停时不接管。隐藏期间业务新增 game.pause 无法从布尔状态区分，仍需项目协调，菜单可独立使用 director.pause/resume。内部 __startPlayable 不是游戏 SDK 接口。启动错误显示通用失败提示，详细原因留在控制台；公共订阅回调异常逐个隔离，避免阻断后续通知。

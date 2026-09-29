@@ -1,12 +1,2 @@
 import { Application } from <%- applicationURL %>;
-
-const canvas = document.getElementById('GameCanvas');
-const size = canvas.parentElement.getBoundingClientRect();
-canvas.width = size.width;
-canvas.height = size.height;
-
-const application = new Application();
-System.import('cc')
-  .then(engine => application.init(engine))
-  .then(() => application.start())
-  .catch(console.error);
+window.__startPlayable(new Application(), () => System.import('cc'));

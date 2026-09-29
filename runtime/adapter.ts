@@ -1,6 +1,8 @@
 export interface AdapterSink {
+  error(error: Error): void;
   ready(): void;
   mute(value: boolean): void;
+  viewable(value: boolean): void;
 }
 export interface ChannelAdapter {
   readonly channel: string;

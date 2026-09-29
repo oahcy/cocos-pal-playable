@@ -18,7 +18,7 @@ const types: Record<string, string> = { html: 'text/html', js: 'application/java
       res.setHeader('Cache-Control', 'no-store');
       if (mock && name === '__preview/sdk.js') {
         res.setHeader('Content-Type', 'application/javascript');
-        res.end('window.playableSDK={isReady:()=>true,isMuted:()=>false,addEventListener(){}};window.openAppStore=function(){console.info("[Playable preview] openStore (mock; no redirect)");};');
+        res.end('window.playableSDK={isReady:()=>true,isMuted:()=>false,isViewable:()=>true,sendEvent(event){console.info("[Playable preview]",event)},addEventListener(){}};window.openAppStore=function(){console.info("[Playable preview] openStore (mock; no redirect)");};');
         return;
       }
       const entry = zip.file(name);

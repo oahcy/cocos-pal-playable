@@ -1,7 +1,7 @@
 import { test, type TestContext } from 'node:test';
 import * as hooks from '../src/hooks';
 import type { BuildOptions } from '../src/types';
-type TestWindow = { playable?: PlayableAPI; playableSDK?: {isReady(): boolean; addEventListener(): void}; openAppStore?: () => void };
+type TestWindow = { playable?: PlayableAPI; playableSDK?: {isReady(): boolean; isViewable(): boolean; sendEvent(): void; addEventListener(): void}; openAppStore?: () => void };
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -57,7 +57,7 @@ test('rejects remote settings and MRAID', async t => {
 test('runtime delegates explicit store clicks and never redirects on finish', () => {
   let calls = 0;
   const document = { hidden: false, addEventListener() {} };
-  const window: TestWindow = { playableSDK: { isReady: () => true, addEventListener() {} }, openAppStore() { calls++; } };
+  const window: TestWindow = { playableSDK: { isReady: () => true, isViewable: () => true, sendEvent() {}, addEventListener() {} }, openAppStore() { calls++; } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../dist/playable-runtime.js'), 'utf8'), { window, document });
   window.playable!.finish(); window.playable!.finish();
   assert.equal(calls, 0);
@@ -77,11 +77,12 @@ test('rejects oversized compressed archives', async t => {
   await assert.rejects(packageBuild(root), /must be smaller/);
   assert.equal(fs.existsSync(path.join(root + '-delivery', 'tiktok.zip')), false);
 });
-test('runtime starts muted, reacts to visibility, and supports unsubscribe', () => {
+test('runtime starts muted, reacts to visibility, and supports unsubscribe', async () => {
   const events: Record<string, () => void> = {};
   const document = { hidden: false, addEventListener(name: string, fn: () => void) { events[name] = fn; } };
-  const window: TestWindow = { playableSDK: { isReady: () => true, addEventListener() {} } };
+  const window: TestWindow = { playableSDK: { isReady: () => true, isViewable: () => true, sendEvent() {}, addEventListener() {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../dist/playable-runtime.js'), 'utf8'), { window, document });
+  await Promise.resolve();
   const states: boolean[] = [];
   const off = window.playable!.onMuteChange(value => states.push(value));
   assert.deepEqual(states, [true]);

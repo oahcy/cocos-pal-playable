@@ -118,3 +118,25 @@ TikTok SDK、方向文件、大小限制及专用规则移入 src/channels/tikto
 - 通过 ai-runtime 内存诊断启动 TypeScript 预览工具，验证 HTTP 页面、mock SDK 和产物运行时能初始化 ready=true/channel=tiktok；测试后停止预览进程，未新增测试文件。mock SDK 补齐了就绪接口，以适配中间层。
 - 本轮未重复 APK 验证，未提交、未推送。
 产物：4847334 字节，SHA-256 257c39d7a652c61cead0d5cc1f0ce583b5f1fefa457cbbbfe1307c1600dd4cee。
+
+## TikTok 展示控制与结束通知（2026-09-29）
+
+- 接入当前官方小写路径 SDK 的 isViewable / visibilityChange({viewable,isInit}) 和 sendEvent("finishPlayPlayable")。finishNotification/containerLifecycle 均为 true；通知发送不等于广告后台确认接收。
+- 入口使用引擎 onPostProjectInitDelegate 预加载启动场景，等待 SDK 与页面/容器允许展示后继续 game.run。公共层忽略过期初始查询，合并页面和容器状态、去重通知。
+- 严格类型检查和现有 11 项测试通过；ai-runtime 内存断言通过：过期查询不得覆盖新事件、双重可见性、结束只发送一次、不自动下载，以及资源/SDK/展示三个条件未齐时不启动。未新增测试脚本。
+- 安装本地 CLI 后实际 demo 构建通过。ZIP 4,849,673 字节，SHA-256 150c5e1eae21b326c0b8cc02bfd582427675bca13b5f50d79e852bdd56a47ef4。
+- Pangle 测试 APK 加载 ZIP 原始文件和在线官方 SDK：game 场景正常；实际拖动并发射 6 次自然进入结束页，捕获一次 finishPlayPlayable，未自动跳转。demo 在 gameEndEvent 调用 finish，CTA 仅 openStore。
+- 原生静音按钮 true/false 与公共层、AudioController.adMuted 同步。这里只验证静音控制链路，未确认扬声器听感。
+- 点击结束页 DOWNLOAD 后页面隐藏、SDK visibilityChange=false、viewable=false、game.isPaused=true；返回后 SDK visibilityChange=true、viewable=true、game.isPaused=false。暂停/恢复各通知一次。临时包装和监听已清理。
+- APK 覆盖自然失败结束；93 分胜利分支仍未实际通关验证。首屏资源清单、安全区、音效听感等既有待验证项不变。没有广告后台审核或投放验收结论。未提交、未推送。
+
+## 设计收敛与启动模块整理（2026-09-29）
+
+- 新增 runtime/startup.ts：启动逻辑纳入严格 TypeScript 检查；EJS 入口仅装配 Application 和 System.import。构建不增加新的渠道或打包策略。
+- 广告只恢复自己暂停的主循环；业务预先暂停时不接管。隐藏期间新增业务 game.pause 的归属仍无法从引擎布尔状态区分，文档明确该限制，不修改引擎或包装其公开方法。
+- 展示查询失败/非法响应进入启动失败提示，正常不可展示继续等待；较新事件优先于旧查询。回调异常逐个捕获，后续订阅继续执行。内部失败信号不扩充游戏公开 SDK。
+- 严格类型检查、原有 11 项测试及 demo CLI 构建通过。ai-runtime 内存断言验证订阅异常隔离、业务预先暂停、广告暂停归属、SDK 查询失败；未新增测试脚本。
+- 新 ZIP 4,848,470 字节，SHA-256 516e8c25809decba931aa10a7dfb4a8a960f0a7cf823b55a94f9a70a294d9534。
+- Pangle APK 重新启动加载新 ZIP：game 场景可见，ready/viewable=true，无启动失败提示；实际切后台 viewable=false/paused=true，返回 true/false。
+- 通过调试调用 game.pause 模拟业务暂停后，再实际切后台/返回，viewable=true 时 paused 仍为 true。测试后已主动恢复，未修改产物或 SDK。
+- 设计文档本期范围收敛为 TikTok；其他渠道仅保留扩展方向。本轮未重测下载/自然结束、听感或胜利分支。未提交或推送。
