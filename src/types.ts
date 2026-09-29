@@ -1,4 +1,9 @@
 export type Orientation = 'auto' | 'portrait' | 'landscape';
+export interface ImageOptions { imageCompression?: 'none' | 'lossy'; imageQuality?: number }
+export interface ImageReport {
+  mode: 'none' | 'lossy'; quality: number;
+  files: Array<{ path: string; before: number; after: number; status: 'compressed' | 'kept'; reason?: string }>;
+}
 export interface Entry { name: string; data: Buffer }
 export interface Channel {
   id: string; displayName: string; sdkURL: string; packageFormat: string; resourceMode: string;
@@ -8,7 +13,7 @@ export interface Channel {
   validate(entries: Entry[]): void;
 }
 export interface BuildOptions {
-  packages?: { playable?: { channel?: string; orientation?: string } };
+  packages?: { playable?: { channel?: string; orientation?: string } & ImageOptions };
   sourceMaps?: boolean | string; server?: string; name?: string; debug?: boolean;
 }
 export interface InitializedOptions extends BuildOptions {
@@ -28,5 +33,5 @@ export interface BuildContext {
 }
 export interface PackageReport {
   channel: string; status: string; archive: string; maxBytesExclusive: number; verification: string; pending: string[];
-  bytes?: number; files?: Array<{path: string; bytes: number}>; sha256?: string; error?: string;
+  images?: ImageReport; bytes?: number; files?: Array<{path: string; bytes: number}>; sha256?: string; error?: string;
 }

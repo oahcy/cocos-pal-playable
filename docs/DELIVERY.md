@@ -10,11 +10,51 @@
 npm ci
 npm test
 npm run install:cli -- D:/code/cocos-cli
-node D:/code/cocos-cli/dist/cli.js build -j D:/prj/playable-demo -p playable
+node D:/code/cocos-cli/dist/cli.js build -j D:/prj/playable-demo -p playable -c D:/code/cocos-pal-playable/examples/tiktok.build.json
 ```
 
-可用 `-c <构建配置.json>` 指定配置，参考 examples/tiktok.build.json。
+交付使用 debug=false 发布配置（examples/tiktok.build.json），以启用现有引擎/脚本压缩和资源序列化压缩。平台默认 debug=false，显式调试配置仍可覆盖；ZIP 已采用 DEFLATE level 9。
 产物位于项目 build/playable-delivery/tiktok.zip；同目录 report.json 记录大小、SHA-256、静态检查和待验项。广告平台上传 ZIP，不上传 report.json；构建失败时不可使用旧包。
+
+## 可选 PNG 有损压缩
+
+在构建配置中设置（完整示例：examples/tiktok.lossy.build.json）：
+
+```json
+{
+  "debug": false,
+  "packages": {
+    "playable": {
+      "channel": "tiktok",
+      "imageCompression": "lossy",
+      "imageQuality": 80
+    }
+  }
+}
+```
+
+imageCompression 默认 none，开启填 lossy；imageQuality 默认 80，范围为整数 1–100，越高越保真，不代表压缩百分比。100 仍可能有损，需要原图请设 none。
+
+当前只处理普通 8 位 PNG，采用调色板量化，保持路径、尺寸和 PNG 格式，支持透明背景；颜色和半透明像素会有近似。动画及高位深 PNG 保留，其他格式不变。不要对法线图、数据纹理等要求像素精确的项目开启此选项。
+
+处理发生在 onAfterBuild 收集资源之后、生成 ZIP 之前；项目原图及中间构建文件不变。PNG 本身和其 DEFLATE 体积均更小时才替换，否则保留原文件。report.json 的 images 字段记录质量、每张图的处理结果和前后大小（图像字节，最终 ZIP 大小见 bytes）。
+
+有损模式需要宿主可用的 sharp 0.32.x 原生依赖；当前 cocos-cli 已有 0.32.6。插件将 sharp 保留为外部可选 peer 依赖，开发安装使用固定版本；关闭压缩时不会加载它，不将该工具打入广告 ZIP。
+
+本项目实测（仅代表当前素材）：
+
+| 配置 | ZIP 字节 |
+| --- | ---: |
+| 不压缩图片 | 4,541,438 |
+| 质量 40 | 2,641,584 |
+| 质量 80 | 2,897,594 |
+| 质量 100 | 3,144,954 |
+
+质量 80 减少 36.2%，已复测 APK 启动、拖动、发射和自然结束页。质量 40/100 仅完成内存打包及图片解码检查，未做 APK 画面验收。
+
+## pink 后续接入
+
+平台已在 src/config.ts 声明 imageCompression 和 imageQuality，CLI 从 packages.playable 读取并校验；pink 后续沿用同一配置结构传入，不重复实现压缩。面板提供压缩方式选择和质量输入，质量控件仅在 lossy 模式显示。当前尚未实现或联调 pink 面板，配置声明不代表面板已自动支持。
 
 ## 游戏接入
 
@@ -33,7 +73,9 @@ const off = playable.onMuteChange(muted => { /* 更新业务音频状态 */ });
 
 ## 2026-09-29 验收快照
 
-对应平台代码 b85bade；ZIP 4,848,470 字节，SHA-256 516e8c25809decba931aa10a7dfb4a8a960f0a7cf823b55a94f9a70a294d9534。
+本版当前交付包使用质量 80，大小 2,897,594 字节，SHA-256 5f49e44524679781662fc7809805054b925393da123d094af827b52592c4e4e5。下述早期包记录用于说明各项验收对应的产物；本版图片压缩的复测范围见上文。
+
+原始 APK 补验对应代码 b85bade。随后使用发布配置优化：未开启图片压缩时 ZIP 4,541,438 字节，SHA-256 8a1981cfcafac709c78c5c3942608244c41dfedc200be950ce00f9be0d70436b，比调试包减少 6.33%。发布包已复测 APK 启动、拖动/发射和自然结束；胜利及完整生命周期记录对应前一调试包。
 
 - 严格 TS 检查、11 项现有测试、真实项目构建通过。
 - APK 横屏 2856×1280、竖屏 1280×2856 均能启动、交互、进入结束页。视频阶段 viewable=false，游戏场景未启动；点击试玩后进入 game 场景。

@@ -1,3 +1,4 @@
+import { readImageOptions } from './packaging/images';
 import tiktok from './channels/tiktok';
 import type { BuildOptions, Channel } from './types';
 const channels: Record<string, Channel> = { tiktok };
@@ -12,6 +13,6 @@ function readOptions(options: BuildOptions) {
   const orientation = settings.orientation ?? 'auto';
   getChannel(channel);
   if (!['auto', 'portrait', 'landscape'].includes(orientation)) throw new Error('Unsupported orientation: ' + orientation);
-  return { channel, orientation };
+  return { channel, orientation, ...readImageOptions(settings) };
 }
 export { getChannel, readOptions, channelIds };

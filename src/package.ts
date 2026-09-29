@@ -1,12 +1,14 @@
+import { compressImages, readImageOptions } from './packaging/images';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { getChannel } from './channel';
 import { collect, validate } from './packaging/web-files';
 import encodeDirectoryZip from './packaging/directory-zip';
-import type { Entry, PackageReport } from './types';
+import type { Entry, PackageReport, ImageOptions } from './types';
 const encoders: Record<string, (entries: Entry[]) => Promise<Buffer>> = { 'directory-zip': encodeDirectoryZip };
-async function packageBuild(inputRoot: string, channelId = 'tiktok') {
+async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOptions: ImageOptions = {}) {
+  const settings = readImageOptions(imageOptions);
   const channel = getChannel(channelId);
   const encode = encoders[channel.packageFormat];
   if (!encode || channel.resourceMode !== 'files') throw new Error('Unsupported playable packaging strategy');
@@ -27,8 +29,10 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok') {
   const report: PackageReport = { channel: channel.id, status: 'failed', archive, maxBytesExclusive: channel.maxBytesExclusive,
     verification: 'local-static-only', pending: [...channel.pending] };
   try {
-    const entries = collect(root, channel);
-    validate(entries, channel);
+    const originalEntries = collect(root, channel);
+    validate(originalEntries, channel);
+    const { entries, report: images } = await compressImages(originalEntries, settings);
+    report.images = images;
     const data = await encode(entries);
     report.bytes = data.length;
     report.files = entries.map(entry => ({ path: entry.name, bytes: entry.data.length }));

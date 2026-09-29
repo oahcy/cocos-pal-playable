@@ -15,7 +15,8 @@ npm run install:cli -- D:/code/cocos-cli
 node D:/code/cocos-cli/dist/cli.js build -j <项目目录> -p playable -c <构建配置.json>
 ```
 
-配置示例见 `examples/tiktok.build.json`；场景、引擎模块等继续使用工程构建配置。
+配置示例见 `examples/tiktok.build.json`；可选 PNG 有损压缩见 `examples/tiktok.lossy.build.json` 和 [交付说明](docs/DELIVERY.md)。
+场景、引擎模块等继续使用工程构建配置。
 用户只进行一次 playable 构建，内部复用 HTML5/Web PAL，然后生成 ZIP。
 当前 cocos-cli 还需包含外部 HTML5 平台的 SystemJS 修复：在
 任务层传递真实的 `platform` 和 `platformType`；

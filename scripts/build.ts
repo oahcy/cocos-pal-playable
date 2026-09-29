@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
   await esbuild.build({
     entryPoints: ['config', 'hooks'].map(name => path.join(root, 'src', name + '.ts')),
     outdir: path.join(root, 'dist'), outExtension: { '.js': '.cjs' },
-    bundle: true, platform: 'node', target: 'node22', format: 'cjs',
+    bundle: true, platform: 'node', target: 'node22', format: 'cjs', external: ['sharp'],
     minify: true, sourcemap: false,
   });
   await esbuild.build({ entryPoints: ['en', 'zh'].map(name => path.join(root, 'i18n', name + '.ts')), outdir: path.join(root, 'i18n'), bundle: true, platform: 'node', format: 'cjs', banner: { js: '// Generated from TypeScript. Do not edit.' } });

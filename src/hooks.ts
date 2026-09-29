@@ -66,7 +66,7 @@ export async function onAfterBuild(this: BuildContext, options: BuildOptions, re
   for (const file of channel.createFiles(settings)) {
     fs.writeFileSync(path.join(result.paths.dir, file.name), file.data);
   }
-  const report = await packageBuild(result.paths.dir, channel.id);
+  const report = await packageBuild(result.paths.dir, channel.id, settings);
   this.buildExitRes.custom = { ...(this.buildExitRes.custom || {}), playable: report };
   console.log('[Playable] ' + channel.displayName + ' ZIP: ' + report.archive);
 };
