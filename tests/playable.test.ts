@@ -120,3 +120,54 @@ test('unsupported channel cannot invalidate an existing delivery', async t => {
   await assert.rejects(packageBuild(root, 'applovin'), /Unsupported playable channel/);
   assert.deepEqual(fs.readFileSync(report.archive), before);
 });
+
+test('packages encoded plugin paths, versioned local bundles and font bytes intact', async t => {
+  const root = fixture(t);
+  const files: Record<string, string | Buffer> = {
+    'src/settings.json': JSON.stringify({ plugins: { jsList: ['plugins/hello%20world.js'] }, assets: {
+      projectBundles: ['main'], bundleVers: { main: 'abc' }, preloadBundles: [{ bundle: 'main' }],
+    } }),
+    'src/plugins/hello world.js': 'globalThis.pluginLoaded = true;',
+    'assets/main/config.abc.json': '{}',
+    'assets/main/index.abc.js': 'globalThis.bundleLoaded = true;',
+    'assets/main/native/font.ttf': Buffer.from([0, 1, 0, 0, 255, 128]),
+    'style.css': '@font-face {font-family:test;src:url("assets/main/native/font.ttf");}',
+  };
+  for (const [name, data] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    fs.writeFileSync(path.join(root, name), data);
+  }
+  const report = await packageBuild(root);
+  const zip = await JSZip.loadAsync(fs.readFileSync(report.archive));
+  for (const [name, data] of Object.entries(files)) {
+    assert.deepEqual(await zip.file(name)!.async('nodebuffer'), Buffer.from(data));
+  }
+  fs.unlinkSync(path.join(root, 'src/plugins/hello world.js'));
+  await assert.rejects(packageBuild(root), /plugins.jsList.*hello%20world/);
+  assert.equal(fs.existsSync(report.archive), false);
+  fs.writeFileSync(path.join(root, 'src/plugins/hello world.js'), '');
+  fs.unlinkSync(path.join(root, 'assets/main/index.abc.js'));
+  await assert.rejects(packageBuild(root), /bundle main.*index.abc.js/);
+  fs.writeFileSync(path.join(root, 'assets/main/index.abc.js'), '');
+  fs.unlinkSync(path.join(root, 'assets/main/native/font.ttf'));
+  await assert.rejects(packageBuild(root), /Missing or escaping.*font.ttf/);
+});
+
+test('rejects plugin paths escaping the package and honors preload bundle version', async t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, 'src'));
+  const settingsPath = path.join(root, 'src/settings.json');
+  for (const script of ['../../outside.js', 'https://example.com/a.js', 'data:text/javascript,0']) {
+    fs.writeFileSync(settingsPath, JSON.stringify({ plugins: { jsList: [script] } }));
+    await assert.rejects(packageBuild(root), /reference/);
+  }
+  fs.writeFileSync(settingsPath, JSON.stringify({ assets: {
+    bundleVers: { main: 'old' }, preloadBundles: [{ bundle: 'main', version: 'new' }],
+  } }));
+  fs.mkdirSync(path.join(root, 'assets/main'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'assets/main/config.new.json'), '{}');
+  fs.writeFileSync(path.join(root, 'assets/main/index.new.js'), '');
+  await packageBuild(root);
+  fs.unlinkSync(path.join(root, 'assets/main/config.new.json'));
+  await assert.rejects(packageBuild(root), /bundle main.*config.new.json/);
+});
