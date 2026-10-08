@@ -1,12 +1,10 @@
 import { deflateRawSync } from 'node:zlib';
-import type { Entry, ImageOptions, ImageReport } from '../types';
+import type { Entry } from '../types';
+import { readImageOptions, type ImageOptions } from '../options';
 
-export function readImageOptions(options: ImageOptions = {}) {
-  const imageCompression = options.imageCompression ?? 'none';
-  const imageQuality = options.imageQuality ?? 80;
-  if (imageCompression !== 'none' && imageCompression !== 'lossy') throw new Error('imageCompression must be none or lossy');
-  if (!Number.isInteger(imageQuality) || imageQuality < 1 || imageQuality > 100) throw new Error('imageQuality must be an integer from 1 to 100');
-  return { imageCompression, imageQuality };
+export interface ImageReport {
+  mode: 'none' | 'lossy'; quality: number;
+  files: Array<{ path: string; before: number; after: number; status: 'compressed' | 'kept'; reason?: string }>;
 }
 
 function hasAnimation(data: Buffer) {

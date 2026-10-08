@@ -1,8 +1,9 @@
-import type { BuildOptions, InitializedOptions, BuildResult, BuildContext } from './types';
+import type { BuildOptions, InitializedOptions, BuildResult, BuildContext } from './builder-types';
 import fs from 'node:fs';
 import path from 'node:path';
-import Ejs from 'ejs';
-import { getChannel, readOptions } from './channel';
+import { getChannel } from './channel';
+import { readOptions } from './options';
+import { generatePlayableTemplate } from './template';
 import { packageBuild } from './package';
 export const throwError = true;
 export function onBeforeInit(options: BuildOptions) {
@@ -33,27 +34,8 @@ export function onBeforeCompressSettings(options: BuildOptions, result: BuildRes
   }
 };
 export async function onBeforeCopyBuildTemplate(this: BuildContext, options: InitializedOptions, result: BuildResult) {
-  const root = result.paths.dir;
   const channel = getChannel(readOptions(options).channel);
-  const url = (target: string) => './' + path.relative(root, target).split(path.sep).map(encodeURIComponent).join('/');
-  const templateDir = path.join(__dirname, '../static/templates');
-  const bootstrap = await Ejs.renderFile(path.join(templateDir, 'index.ts.ejs'), {
-    applicationURL: JSON.stringify(url(result.paths.applicationJS)),
-  });
-  const transformed = await this.utils.transformCode(bootstrap, { importMapFormat: 'systemjs' });
-  if (!transformed) throw new Error('Could not compile playable bootstrap');
-  result.paths.indexJs = path.join(root, 'index.js');
-  result.paths.indexHTML = path.join(root, 'index.html');
-  fs.writeFileSync(result.paths.indexJs, transformed);
-  fs.copyFileSync(path.join(__dirname, 'playable-runtime.js'), path.join(root, 'playable-runtime.js'));
-  fs.copyFileSync(path.join(templateDir, 'style.css'), path.join(root, 'style.css'));
-  fs.writeFileSync(result.paths.indexHTML, await Ejs.renderFile(path.join(templateDir, 'index.ejs'), {
-    title: options.name || 'Playable',
-    sdkURL: channel.sdkURL,
-    polyfillsURL: result.paths.polyfillsJs ? url(result.paths.polyfillsJs) : '',
-    systemURL: url(result.paths.systemJs),
-    importMapURL: url(result.paths.importMap),
-  }));
+  await generatePlayableTemplate(this, options, result, channel);
   options.md5CacheOptions.includes.push('index.js', 'style.css');
   options.md5CacheOptions.excludes.push('playable-runtime.js', ...channel.extraRootFiles);
   options.md5CacheOptions.replaceOnly.push('index.html');

@@ -79,7 +79,10 @@ Playable 在 `onBeforeInit` 中将本次任务的 sourceMaps 设为 false，再�
 ## 渠道与打包职责
 
 - src/hooks.ts：连接 CLI 构建阶段，渲染 EJS 入口并交付打包。
-- src/channel.ts：渠道注册与选项校验；当前仅注册 TikTok。
+- src/channel.ts：渠道注册与查找；当前仅注册 TikTok。
+- src/options.ts：平台参数默认值、解析与校验；config.ts 引用相同默认值。
+- src/builder-types.ts：CLI 构建钩子输入输出类型。
+- src/template.ts：页面渲染、启动入口编译及运行时复制；hooks.ts 保留生命周期调度与 MD5 配置。
 - src/channels/tiktok.ts：SDK 地址、方向文件、大小限制、外部引用例外和 TikTok 专用规则。
 - src/packaging/web-files.ts：收集构建资源、校验包内引用及远程资源配置。
 - src/packaging/directory-zip.ts：将文件集合编码为可复现的 ZIP。
@@ -87,7 +90,7 @@ Playable 在 `onBeforeInit` 中将本次任务的 sourceMaps 设为 false，再�
 
 渠道分别声明 packageFormat 和 resourceMode；当前实现为 directory-zip + files。
 单 HTML 和内嵌资源加载尚未实现；新增渠道时还需要实现并验证对应运行时 SDK 适配，不能仅新增配置就视为支持。
-运行时仍由 runtime/index.ts 提供 TikTok 接口适配，与构建期 ZIP 编码分离。
+运行时由 runtime/entries/tiktok.ts 装配 TikTok 适配器，与构建期 ZIP 编码分离。
 
 ## 设备测试后修正
 
@@ -102,7 +105,7 @@ https://ads.tiktok.com/resources/help/article/how-to-create-tiktok-pangle-playab
 
 ## 运行时中间层
 
-游戏侧接口见 runtime/playable.d.ts。公共层 runtime/core.ts 管理就绪、首次交互、页面可见性、静音、订阅与结束幂等；runtime/adapters/tiktok.ts 只负责官方 SDK。runtime/index.ts 是当前 TikTok 的构建入口，esbuild 将入口、公共层和适配器合成一个 playable-runtime.js。新增渠道时新增其适配器和构建入口，并由渠道构建配置选择；不运行时探测渠道、不建立动态插件注册框架。当前仍只支持 TikTok。
+游戏侧接口见 runtime/playable.d.ts。公共层 runtime/core.ts 管理就绪、首次交互、页面可见性、静音、订阅与结束幂等；runtime/adapters/tiktok.ts 只负责官方 SDK。runtime/index.ts 提供与渠道无关的 installRuntime；runtime/entries/tiktok.ts 是当前 TikTok 的构建入口，esbuild 将入口、公共层和适配器合成一个 playable-runtime.js。新增渠道时新增其适配器和构建入口，并由渠道构建配置选择；不运行时探测渠道、不建立动态插件注册框架。当前仍只支持 TikTok。
 
 - channel：构建渠道标识。
 - ready / onReady(callback)：仅表示 SDK 可用；已就绪时同步调用，未就绪时订阅一次，返回退订函数。不代表游戏资源已加载或容器允许展示，也不自动启动玩法。

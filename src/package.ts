@@ -1,11 +1,12 @@
-import { compressImages, readImageOptions } from './packaging/images';
+import { compressImages } from './packaging/images';
+import { readImageOptions, type ImageOptions } from './options';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { getChannel } from './channel';
 import { collect, validate } from './packaging/web-files';
 import encodeDirectoryZip from './packaging/directory-zip';
-import type { Entry, PackageReport, ImageOptions } from './types';
+import type { Entry, PackageReport } from './types';
 const encoders: Record<string, (entries: Entry[]) => Promise<Buffer>> = { 'directory-zip': encodeDirectoryZip };
 async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOptions: ImageOptions = {}) {
   const settings = readImageOptions(imageOptions);

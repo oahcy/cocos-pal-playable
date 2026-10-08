@@ -175,3 +175,21 @@ TikTok SDK、方向文件、大小限制及专用规则移入 src/channels/tikto
 - 收录发布构建默认值与可选 PNG 有损压缩，代码、配置示例和交付说明一并归档。前述“未提交”是当轮验证时的状态。
 - 本地 CLI 已安装本版；当前交付包仍为质量 80 的 2,897,594 字节 ZIP，未更换已验收产物。最后的 APNG 保护检查及重打包与当前 ZIP 字节一致性断言通过。
 - pink 仅完成参数契约与平台配置声明，面板和传参联调后续进行；其他渠道、正式投放验收不属于本版完成范围。
+
+## 结构整理（2026-10-08）
+
+- options.ts 集中平台参数默认值、解析与校验；channel.ts 仅注册及查找渠道。config.ts 复用相同默认值，图片模块保留参数边界校验。
+- template.ts 接管 EJS 渲染、入口编译及文件输出；hooks.ts 保留构建生命周期调度和 MD5 配置。builder-types.ts 隔离 CLI 类型，方向、交付状态及检查范围类型收紧。
+- runtime/index.ts 提供公共 installRuntime；runtime/entries/tiktok.ts 显式装配 TikTok，构建脚本指向该入口。没有增加渠道或动态注册框架。
+- 通过 ai-runtime 运行严格 TS 检查和原有 11 项测试；内存断言覆盖配置默认值一致、非法输入，以及重构前后就绪/可见性/静音/暂停恢复/下载/结束去重/SDK 缺失错误处理的行为一致性。未新增落地诊断脚本。
+- 安装到本地 CLI 并重新构建真实项目，质量 80 ZIP 为 2,897,618 字节，比上一版增加 24 字节；逐条目对比仅 playable-runtime.js 改变，入口页面和全部其他资源字节一致。SHA-256：58c2d881e86fc68eef127eac811a68af14a54449851574a8cc66d4b71c7577b8。
+- 第一次真实构建因上次 ai-runtime 检查遗留的 curz 文件句柄锁定 ZIP 而失败；关闭该检查句柄后重建成功，没有修改打包错误策略。
+- 本轮模拟器在线，但没有测试 APK 的可调试 WebView，旧调试连接已失效；未重复 APK 画面与实际交互验收。前述运行时行为比较使用内存模拟 SDK，不等同于 APK 验收。未提交、未推送。
+
+## 结构整理后的 APK 补验（2026-10-08）
+
+- 打开模拟器已安装的 Pangle Demo，进入 All Test Tool → Playable 验证页后成功重新发现并连接 WebView；此前没有调试目标仅因未打开试玩页，不是 APK 不可用。
+- 使用本次 2,897,618 字节 ZIP（SHA-256 58c2d881e86fc68eef127eac811a68af14a54449851574a8cc66d4b71c7577b8），内存 HTTP 服务提供原始 ZIP 文件及官方在线 SDK。校验服务响应的 runtime 与 ZIP 一致，WebView Resource Timing 的 runtime 解码大小为 5,257 字节。
+- 竖屏 game 场景正常，ready/viewable=true、paused=false，无启动失败提示；截图确认画面显示。实际拖动、7 次发射后自然出现结束页，捕获一次 finishPlayPlayable，未强制设置游戏状态；临时 SDK 观测包装已恢复并清理。
+- 点击结束页 DOWNLOAD 后 Android VIEW Intent 指向 https://example.com/，系统 Chrome 打开；广告 viewable=false、paused=true。切回 Pangle 后 viewable=true、paused=false，结束页仍存在。仅证明跳转链路，不要求测试站点网络加载成功。
+- 本次诊断通过 ai-runtime 完成，无新增落地测试脚本。未重测横屏、音效听感、胜利分支或广告后台审核；本条补充并更新上一节未做 APK 验收的状态。未提交、未推送。

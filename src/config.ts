@@ -1,3 +1,4 @@
+import { defaults, orientations, imageCompressionModes } from './options';
 import { channelIds } from './channel';
 export default {
   displayName: 'i18n:playable.title', platformType: 'HTML5',
@@ -11,9 +12,9 @@ export default {
     sourceMaps: { default: false },
   },
   options: {
-    imageCompression: { label: 'i18n:playable.options.imageCompression', type: 'enum', items: ['none', 'lossy'].map(value => ({ value, label: 'i18n:playable.options.' + value })), default: 'none' },
-    imageQuality: { label: 'i18n:playable.options.imageQuality', type: 'number', default: 80 },
-    channel: { label: 'i18n:playable.options.channel', type: 'enum', items: channelIds, default: 'tiktok' },
-    orientation: { label: 'i18n:playable.options.orientation', type: 'enum', items: ['auto', 'portrait', 'landscape'].map(value => ({ value, label: 'i18n:playable.options.' + value })), default: 'auto' },
+    imageCompression: { label: 'i18n:playable.options.imageCompression', type: 'enum', items: imageCompressionModes.map(value => ({ value, label: 'i18n:playable.options.' + value })), default: defaults.imageCompression },
+    imageQuality: { label: 'i18n:playable.options.imageQuality', type: 'number', default: defaults.imageQuality },
+    channel: { label: 'i18n:playable.options.channel', type: 'enum', items: channelIds, default: defaults.channel },
+    orientation: { label: 'i18n:playable.options.orientation', type: 'enum', items: orientations.map(value => ({ value, label: 'i18n:playable.options.' + value })), default: defaults.orientation },
   },
 };

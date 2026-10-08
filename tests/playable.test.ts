@@ -1,6 +1,6 @@
 import { test, type TestContext } from 'node:test';
 import * as hooks from '../src/hooks';
-import type { BuildOptions } from '../src/types';
+import type { BuildOptions } from '../src/builder-types';
 type TestWindow = { playable?: PlayableAPI; playableSDK?: {isReady(): boolean; isViewable(): boolean; sendEvent(): void; addEventListener(): void}; openAppStore?: () => void };
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +10,8 @@ import vm from 'node:vm';
 import { randomBytes } from 'node:crypto';
 import JSZip from 'jszip';
 import { packageBuild } from '../src/package';
-import { getChannel, readOptions } from '../src/channel';
+import { getChannel } from '../src/channel';
+import { readOptions } from '../src/options';
 const SDK_URL = getChannel('tiktok').sdkURL;
 function fixture(t: TestContext) {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'playable-test-'));
