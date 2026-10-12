@@ -1,18 +1,26 @@
 import { compressImages } from './packaging/images';
-import { readImageOptions, type ImageOptions } from './options';
+import { readImageOptions, readOutputFormat, type PackageOptions } from './options';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { getChannel } from './channel';
 import { collect, validate } from './packaging/web-files';
+import { encodeSingleHTML } from './packaging/single-html';
 import encodeDirectoryZip from './packaging/directory-zip';
 import type { Entry, PackageReport } from './types';
 const encoders: Record<string, (entries: Entry[]) => Promise<Buffer>> = { 'directory-zip': encodeDirectoryZip };
-async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOptions: ImageOptions = {}) {
+async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOptions: PackageOptions = {}) {
   const settings = readImageOptions(imageOptions);
   const channel = getChannel(channelId);
-  const encode = encoders[channel.packageFormat];
-  if (!encode || channel.resourceMode !== 'files') throw new Error('Unsupported playable packaging strategy');
+  const requested = readOutputFormat(imageOptions.outputFormat);
+  const format = requested === 'channel-default' ? channel.packageFormat : requested;
+  const channelDefaultFormat = format === channel.packageFormat;
+  const encode = format === 'single-html'
+    ? (entries: Entry[]) => encodeSingleHTML(entries,
+      fs.readFileSync(path.join(__dirname, '../dist/single-html-runtime.js'), 'utf8'), channel.sdkURL,
+      path.join(__dirname, '../static/templates/single-html.ejs'))
+    : encoders[format];
+  if (!encode) throw new Error('Unsupported playable packaging strategy: ' + format);
   const root = fs.realpathSync(inputRoot);
   const delivery = root + '-delivery';
   const marker = path.join(delivery, '.playable-owner.json');
@@ -23,12 +31,13 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     fs.mkdirSync(delivery);
     fs.writeFileSync(marker, JSON.stringify({ source: root }));
   }
-  const archive = path.join(delivery, channel.archiveName);
-  const reportFile = path.join(delivery, 'report.json');
+  const archive = path.join(delivery, channelDefaultFormat ? channel.archiveName : channel.id + '.experimental.' + (format === 'single-html' ? 'html' : 'zip'));
+  const reportFile = path.join(delivery, channelDefaultFormat ? 'report.json' : format + '.report.json');
   // Invalidate only this plugin's prior output before validating a replacement.
   if (fs.existsSync(archive)) fs.unlinkSync(archive);
   const report: PackageReport = { channel: channel.id, status: 'failed', archive, maxBytesExclusive: channel.maxBytesExclusive,
-    verification: 'local-static-only', pending: [...channel.pending] };
+    packageFormat: format, resourceMode: format === 'single-html' ? 'embedded' : 'files', channelDefaultFormat,
+    verification: 'local-static-only', pending: [...channel.pending, ...(channelDefaultFormat ? [] : ['Format verification only: not the channel default delivery format; size cap is retained conservatively'])] };
   try {
     const originalEntries = collect(root, channel);
     validate(originalEntries, channel);
@@ -37,7 +46,7 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     const data = await encode(entries);
     report.bytes = data.length;
     report.files = entries.map(entry => ({ path: entry.name, bytes: entry.data.length }));
-    if (data.length >= channel.maxBytesExclusive) throw new Error(channel.displayName + ' ZIP must be smaller than ' + channel.maxBytesExclusive + ' bytes; got ' + data.length);
+    if (data.length >= channel.maxBytesExclusive) throw new Error(channel.displayName + ' ' + format + ' must be smaller than ' + channel.maxBytesExclusive + ' bytes; got ' + data.length);
     fs.writeFileSync(archive, data);
     report.sha256 = crypto.createHash('sha256').update(data).digest('hex');
     report.status = 'packaged';

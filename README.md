@@ -16,6 +16,7 @@ node D:/code/cocos-cli/dist/cli.js build -j <项目目录> -p playable -c <构�
 ```
 
 配置示例见 `examples/tiktok.build.json`；可选 PNG 有损压缩见 `examples/tiktok.lossy.build.json` 和 [交付说明](docs/DELIVERY.md)。
+引擎属性混淆示例见 `examples/tiktok.mangle.build.json`：使用公共参数 `mangleProperties: true`，同时保持 `debug: false`。CLI 在项目根目录生成或读取 `engine-mangle-config.json`，按 HTML5 规则处理；这不是业务脚本的控制流混淆。示例输出到独立的 `playable-mangle-on` 目录，兼容性仍需用目标项目验证。
 场景、引擎模块等继续使用工程构建配置。
 用户只进行一次 playable 构建，内部复用 HTML5/Web PAL，然后生成 ZIP。
 当前 cocos-cli 还需包含外部 HTML5 平台的 SystemJS 修复：在
@@ -137,3 +138,40 @@ init 每个页面调用一次，适配器将官方回调转换为 sink 通知。
 启动模板只装配 Application 与 System.import；runtime/startup.ts 接受严格类型检查，在 onPostProjectInitDelegate 中预加载启动场景、等待 SDK 就绪和 viewable=true，然后沿用 Application.start 的 game.run。广告层记录暂停归属，只恢复自己暂停的主循环；业务预先暂停时不接管。隐藏期间业务新增 game.pause 无法从布尔状态区分，仍需项目协调，菜单可独立使用 director.pause/resume。内部 __startPlayable 不是游戏 SDK 接口。启动错误显示通用失败提示，详细原因留在控制台；公共订阅回调异常逐个隔离，避免阻断后续通知。
 
 首版构建、游戏接入与验收边界见 [交付说明](docs/DELIVERY.md)。
+
+### ZIP / 单 HTML 共用打包流程
+
+构建配置 `packages.playable.outputFormat` 可选 `channel-default`（默认）、`directory-zip`、`single-html`。文件收集、输入校验、图片压缩、体积检查、交付目录管理及报告生成共用 `packageBuild`，最后由封装器输出 ZIP 或 HTML。
+
+```json
+{
+  "packages": {
+    "playable": {
+      "channel": "tiktok",
+      "outputFormat": "single-html",
+      "imageCompression": "lossy",
+      "imageQuality": 80
+    }
+  }
+}
+```
+
+TikTok 默认仍输出 `tiktok.zip`。指定 HTML 时生成 `tiktok.experimental.html` 和 `single-html.report.json`，用于验证格式，不能视作 TikTok 官方投放包；报告标明 `channelDefaultFormat: false`，暂保守沿用渠道大小上限。两种输出及报告互不覆盖。
+
+HTML 保留与 ZIP 相同的官方 SDK 引用和 `playable-runtime.js` 内容，下载、结束、静音、可见性均走同一渠道适配器。渠道 SDK 按其现有规则外链加载；游戏脚本和资源内嵌。缺少 SDK 会报错，不自动降级为预览接口。
+
+已有构建目录也可直接调用同一打包流程：
+
+```powershell
+npm run build
+npm run single-html -- D:\prj\playable-demo\build\playable 80
+node --import tsx scripts/preview.ts D:\prj\playable-demo\build\playable-delivery\tiktok.experimental.html --mock-sdk
+```
+
+`single-html` 的可选质量参数范围 1–100，省略保持原图。`preview` 同时接受 ZIP/HTML；只有显式 `--mock-sdk` 才在预览响应中模拟 SDK，不修改产物。正式 SDK 仍需要渠道容器环境验证。
+
+- 文件以 ZIP/Base64 内嵌，运行时解压生成 Blob URL；SystemJS 保留原模块地址解析依赖，脚本读取映射到 Blob。
+- `transformPipeline` 映射普通资源地址，保留原图片、音频及二进制解码器；`downloader.register` 处理 Bundle、合并 JSON 和 FontFace 字体加载。
+- settings 使用内存 JSON 地址；插件脚本在项目初始化阶段依序加载。无需修改引擎、CLI，也不替换全局 XMLHttpRequest/fetch。
+- 当前适配已有 SystemJS/Application 启动结构；WASM、CCONB、视频、scoped import map、CSS @import 明确报错。自定义网络请求不自动转为内嵌资源。
+- 当前一次解压全部文件并保留 Blob，内存占用高于 ZIP 目录模式；仍需更多项目和移动 WebView 验证。

@@ -1,5 +1,10 @@
 export const title = "试玩广告";
 export const options = {
+  "outputFormat": "输出格式",
+  "channel-default": "渠道默认",
+  "directory-zip": "目录 ZIP",
+  "single-html": "单 HTML（格式验证）",
+
   "imageCompression": "PNG 图片压缩",
   "imageQuality": "图片质量（1–100）",
   "none": "不压缩",

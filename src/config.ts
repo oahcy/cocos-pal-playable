@@ -1,4 +1,4 @@
-import { defaults, orientations, imageCompressionModes } from './options';
+import { defaults, orientations, imageCompressionModes, outputFormats } from './options';
 import { channelIds } from './channel';
 export default {
   displayName: 'i18n:playable.title', platformType: 'HTML5',
@@ -12,6 +12,7 @@ export default {
     sourceMaps: { default: false },
   },
   options: {
+    outputFormat: { label: 'i18n:playable.options.outputFormat', type: 'enum', items: outputFormats.map(value => ({ value, label: 'i18n:playable.options.' + value })), default: defaults.outputFormat },
     imageCompression: { label: 'i18n:playable.options.imageCompression', type: 'enum', items: imageCompressionModes.map(value => ({ value, label: 'i18n:playable.options.' + value })), default: defaults.imageCompression },
     imageQuality: { label: 'i18n:playable.options.imageQuality', type: 'number', default: defaults.imageQuality },
     channel: { label: 'i18n:playable.options.channel', type: 'enum', items: channelIds, default: defaults.channel },

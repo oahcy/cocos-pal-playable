@@ -1,6 +1,6 @@
-import type { ImageOptions } from './options';
+import type { PackageOptions } from './options';
 export interface BuildOptions {
-  packages?: { playable?: { channel?: string; orientation?: string } & ImageOptions };
+  packages?: { playable?: { channel?: string; orientation?: string } & PackageOptions };
   sourceMaps?: boolean | string; server?: string; name?: string; debug?: boolean;
 }
 export interface InitializedOptions extends BuildOptions {

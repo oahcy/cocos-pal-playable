@@ -50,5 +50,5 @@ export async function onAfterBuild(this: BuildContext, options: BuildOptions, re
   }
   const report = await packageBuild(result.paths.dir, channel.id, settings);
   this.buildExitRes.custom = { ...(this.buildExitRes.custom || {}), playable: report };
-  console.log('[Playable] ' + channel.displayName + ' ZIP: ' + report.archive);
+  console.log('[Playable] ' + channel.displayName + ' ' + report.packageFormat + ': ' + report.archive);
 };

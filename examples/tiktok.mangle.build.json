@@ -1,0 +1,15 @@
+{
+  "debug": false,
+  "sourceMaps": false,
+  "md5Cache": false,
+  "packages": {
+    "playable": {
+      "channel": "tiktok",
+      "orientation": "auto",
+      "imageCompression": "lossy",
+      "imageQuality": 80
+    }
+  },
+  "mangleProperties": true,
+  "outputName": "playable-mangle-on"
+}

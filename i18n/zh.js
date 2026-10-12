@@ -27,6 +27,10 @@ __export(zh_exports, {
 module.exports = __toCommonJS(zh_exports);
 var title = "\u8BD5\u73A9\u5E7F\u544A";
 var options = {
+  "outputFormat": "\u8F93\u51FA\u683C\u5F0F",
+  "channel-default": "\u6E20\u9053\u9ED8\u8BA4",
+  "directory-zip": "\u76EE\u5F55 ZIP",
+  "single-html": "\u5355 HTML\uFF08\u683C\u5F0F\u9A8C\u8BC1\uFF09",
   "imageCompression": "PNG \u56FE\u7247\u538B\u7F29",
   "imageQuality": "\u56FE\u7247\u8D28\u91CF\uFF081\u2013100\uFF09",
   "none": "\u4E0D\u538B\u7F29",
