@@ -170,8 +170,8 @@ node --import tsx scripts/preview.ts D:\prj\playable-demo\build\playable-deliver
 
 `single-html` 的可选质量参数范围 1–100，省略保持原图。`preview` 同时接受 ZIP/HTML；只有显式 `--mock-sdk` 才在预览响应中模拟 SDK，不修改产物。正式 SDK 仍需要渠道容器环境验证。
 
-- 文件以 ZIP/Base64 内嵌，运行时解压生成 Blob URL；SystemJS 保留原模块地址解析依赖，脚本读取映射到 Blob。
-- `transformPipeline` 映射普通资源地址，保留原图片、音频及二进制解码器；`downloader.register` 处理 Bundle、合并 JSON 和 FontFace 字体加载。
+- 文件以 ZIP/Base64 内嵌，只解压被请求的文件。并发请求复用同一解压任务和 Blob URL；SystemJS 在 instantiate 阶段等待解压，再保留原模块地址解析依赖。
+- 在 load/preload 的 preprocess 之后插入异步资源准备步骤，保留原图片、音频及二进制解码器；`downloader.register` 处理 Bundle、合并 JSON 和 FontFace 字体加载。
 - settings 使用内存 JSON 地址；插件脚本在项目初始化阶段依序加载。无需修改引擎、CLI，也不替换全局 XMLHttpRequest/fetch。
 - 当前适配已有 SystemJS/Application 启动结构；WASM、CCONB、视频、scoped import map、CSS @import 明确报错。自定义网络请求不自动转为内嵌资源。
-- 当前一次解压全部文件并保留 Blob，内存占用高于 ZIP 目录模式；仍需更多项目和移动 WebView 验证。
+- 只为实际请求的文件创建 Blob，JSON 缓存解压文本并独立解析，避免对象修改相互影响。已创建 Blob 保留到页面销毁；暂不提前释放音频、字体引用。控制台错误包含读取阶段与资源路径。仍需更多项目和移动 WebView 验证。

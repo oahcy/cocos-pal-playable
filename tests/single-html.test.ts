@@ -40,35 +40,76 @@ test('embedded lookup normalizes local queries and fails on missing or external 
   const zip = new JSZip(); zip.file('assets/test.json', '{"value":42}');
   const store = new EmbeddedStore(zip);
   assert.deepEqual(await store.json('assets/test.json?version=1'), { value: 42 });
-  assert.throws(() => store.url('absent.png'), /Missing/);
+  await assert.rejects(store.url('absent.png'), /decode Blob.*absent.png.*Missing/);
   await assert.rejects(store.json('absent.json'), /Missing/);
 });
 
-// Verify resource remapping preserves Cocos request/cache identity and pack routing.
-test('asset pipeline maps native URLs but leaves bundles and JSON to registered handlers', async () => {
+test('load and preload await native resources without changing pack routing or request identity', async () => {
   const { installEmbeddedAssets } = await import('../runtime/embedded/engine');
   type Engine = import('../runtime/embedded/engine').EmbeddedEngine;
-  type Pipe = Parameters<Engine['assetManager']['transformPipeline']['append']>[0];
-  let pipe!: Pipe;
+  type Pipe = Engine['assetManager']['preprocessPipe'];
+  const pre: Pipe = (_task, done) => done();
+  const makePipeline = () => ({ pipes: [pre], insert(pipe: Pipe, index: number) { this.pipes.splice(index, 0, pipe); } });
   let handlers!: Parameters<Engine['assetManager']['downloader']['register']>[0];
-  const engine = { assetManager: { transformPipeline: { append(value: Pipe) { pipe = value; } },
-    downloader: { bundleVers: {}, register(value: typeof handlers) { handlers = value; } } } } as Engine;
+  const engine = { assetManager: { pipeline: makePipeline(), fetchPipeline: makePipeline(), preprocessPipe: pre,
+    downloader: { bundleVers: {}, register(value: typeof handlers) { handlers = { ...handlers, ...value }; } } } } as Engine;
   const store = new EmbeddedStore(new JSZip());
-  store.url = url => 'blob:' + url;
+  store.url = async url => 'blob:' + url;
   installEmbeddedAssets(engine, store);
-  const task = { input: [
-    { url: 'assets/p.png', ext: '.png', isNative: true },
-    { url: 'assets/config.json', ext: '.json', isNative: false },
-    { url: 'main', ext: 'bundle', isNative: false },
-    { url: 'assets/packed.bin', ext: '.bin', isNative: false, info: { packs: ['pack'] } },
-  ], output: [] } as Parameters<Pipe>[0];
-  assert.equal(pipe(task), undefined);
-  assert.equal(task.output, task.input);
-  assert.deepEqual(task.output.map(item => item.url), ['blob:assets/p.png', 'assets/config.json', 'main', 'assets/packed.bin']);
-  assert.equal(typeof handlers.bundle, 'function');
-  assert.equal(typeof handlers['.json'], 'function');
+  for (const pipeline of [engine.assetManager.pipeline, engine.assetManager.fetchPipeline]) {
+    const task = { input: [
+      { url: 'assets/p.png', ext: '.png', isNative: true },
+      { url: 'assets/config.json', ext: '.json', isNative: false },
+      { url: 'main', ext: 'bundle', isNative: false },
+      { url: 'assets/packed.bin', ext: '.bin', isNative: false, info: { packs: ['pack'] } },
+    ], output: [] } as Parameters<Pipe>[0];
+    await new Promise<void>((resolve, reject) => pipeline.pipes[1](task, error => error ? reject(error) : resolve()));
+    assert.equal(task.output, task.input);
+    assert.deepEqual(task.output.map(item => item.url), ['blob:assets/p.png', 'assets/config.json', 'main', 'assets/packed.bin']);
+  }
+  assert.equal(typeof handlers.bundle, 'function'); assert.equal(typeof handlers['.json'], 'function');
+  let release!: (url: string) => void;
+  const slow = new Promise<string>(resolve => { release = resolve; });
+  store.url = async url => { if (url === 'slow.png') return slow; throw new Error('Missing: ' + url); };
+  const mixed = { input: [{ url: 'slow.png', ext: '.png', isNative: true }, { url: 'missing.png', ext: '.png', isNative: true }], output: [] };
+  let completed = false;
+  const result = new Promise<Error | undefined>(resolve => engine.assetManager.pipeline.pipes[1](mixed, error => { completed = true; resolve(error); }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(completed, false);
+  release('blob:slow');
+  assert.match((await result)!.message, /missing.png/);
+  assert.equal(mixed.input[0].url, 'slow.png');
+
+  const task = { input: [{ url: 'absent.png', ext: '.png', isNative: true }], output: [] };
+  store.url = async url => { throw new Error('Missing: ' + url); };
+  await assert.rejects(new Promise<void>((resolve, reject) => engine.assetManager.pipeline.pipes[1](task, error => error ? reject(error) : resolve())), /prepare assets.*absent.png/);
 });
 
+test('embedded files decode lazily, concurrent consumers share work, JSON mutation stays local', async t => {
+  const source = new JSZip(); source.file('used.bin', new Uint8Array([1, 2, 3])); source.file('unused.bin', 'never read'); source.file('config.json', '{"list":[1,2]}');
+  const zip = await JSZip.loadAsync(await source.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }));
+  const reads: Record<string, number> = {};
+  for (const file of Object.values(zip.files)) {
+    const original = file.async.bind(file);
+    file.async = ((...args: Parameters<typeof file.async>) => { reads[file.name] = (reads[file.name] || 0) + 1; return original(...args); }) as typeof file.async;
+  }
+  const store = new EmbeddedStore(zip);
+  assert.deepEqual(reads, {});
+  const [first, second] = await Promise.all([store.url('used.bin'), store.url('./used.bin?v=1')]);
+  t.after(() => URL.revokeObjectURL(first));
+  assert.equal(first, second); assert.equal(await store.url('used.bin'), first);
+  assert.equal(reads['used.bin'], 1); assert.equal(reads['unused.bin'], undefined);
+  assert.deepEqual(new Uint8Array(await (await fetch(first)).arrayBuffer()), new Uint8Array([1, 2, 3]));
+  const [a, b] = await Promise.all([store.json<{ list: number[] }>('config.json'), store.json<{ list: number[] }>('config.json')]);
+  a.list.pop(); assert.deepEqual(b.list, [1, 2]); assert.equal(reads['config.json'], 1);
+  assert.throws(() => store.readyURL('unused.bin'), /resolve script.*unused.bin.*not prepared/);
+  assert.equal(reads['unused.bin'], undefined);
+});
+
+test('JSON errors name the resource and decode stage', async () => {
+  const zip = new JSZip(); zip.file('broken.json', '{');
+  await assert.rejects(new EmbeddedStore(zip).json('broken.json'), /read JSON.*broken.json/);
+});
 
 test('compiled build hook shares ZIP packaging, preserves SDK, and isolates format reports', async t => {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path');

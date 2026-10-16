@@ -6,40 +6,74 @@ export function resourceName(value: string): string {
   if (url.origin !== new URL(VIRTUAL_ROOT).origin) throw new Error('External embedded resource: ' + value);
   return decodeURIComponent(url.pathname.slice(1));
 }
-/** Blob URLs stay alive for audio/font consumers until this document is destroyed. */
+export function resourceError(stage: string, value: string, cause: unknown): Error {
+  return new Error('[Playable embedded] ' + stage + ' "' + value + '": ' + (cause instanceof Error ? cause.message : String(cause)));
+}
+/** Decode only requested files. Keep Blob URLs alive for later audio/font reuse. */
 export class EmbeddedStore {
   private urls = new Map<string, string>();
+  private pendingURLs = new Map<string, Promise<string>>();
+  private texts = new Map<string, Promise<string>>();
   private scripts = new Map<string, Promise<void>>();
   constructor(private zip: JSZip) {}
-  async prepare(): Promise<void> {
-    await Promise.all(Object.values(this.zip.files).filter(file => !file.dir).map(async file => {
-      const bytes = await file.async('arraybuffer');
-      this.urls.set(file.name, URL.createObjectURL(new Blob([bytes], { type: mime[file.name.split('.').pop()!] || 'application/octet-stream' })));
-    }));
+  private file(name: string): JSZip.JSZipObject {
+    const file = this.zip.file(name);
+    if (!file) throw new Error('Missing embedded resource: ' + name);
+    return file;
   }
-  url(value: string): string {
-    const name = resourceName(value), url = this.urls.get(name);
-    if (!url) throw new Error('Missing embedded resource: ' + name);
-    return url;
+  async url(value: string): Promise<string> {
+    try {
+      const name = resourceName(value);
+      let pending = this.pendingURLs.get(name);
+      if (!pending) {
+        pending = this.file(name).async('arraybuffer').then(bytes => {
+          const url = URL.createObjectURL(new Blob([bytes], { type: mime[name.split('.').pop()!] || 'application/octet-stream' }));
+          this.urls.set(name, url);
+          return url;
+        });
+        this.pendingURLs.set(name, pending);
+        void pending.catch(() => this.pendingURLs.delete(name));
+      }
+      return await pending;
+    } catch (error) { throw resourceError('decode Blob', value, error); }
+  }
+  /** Used only by synchronous SystemJS createScript after instantiate has awaited url(). */
+  readyURL(value: string): string {
+    try {
+      const name = resourceName(value), url = this.urls.get(name);
+      if (!url) throw new Error('Resource was not prepared');
+      return url;
+    } catch (error) { throw resourceError('resolve script', value, error); }
   }
   async json<T>(value: string): Promise<T> {
-    const file = this.zip.file(resourceName(value));
-    if (!file) throw new Error('Missing embedded JSON: ' + value);
-    return JSON.parse(await file.async('string')) as T;
+    try {
+      const name = resourceName(value);
+      let pending = this.texts.get(name);
+      if (!pending) {
+        pending = this.file(name).async('string');
+        this.texts.set(name, pending);
+        void pending.catch(() => this.texts.delete(name));
+      }
+      // Cocos parsers may mutate JSON. Cache decoded text, never the shared parsed object.
+      return JSON.parse(await pending) as T;
+    } catch (error) { throw resourceError('read JSON', value, error); }
   }
-  script(value: string): Promise<void> {
-    const name = resourceName(value);
-    let pending = this.scripts.get(name);
-    if (!pending) {
-      pending = new Promise<void>((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = this.url(name); script.async = false;
-        script.onload = () => { script.remove(); resolve(); };
-        script.onerror = () => { script.remove(); reject(new Error('Embedded script failed: ' + name)); };
-        document.head.appendChild(script);
-      });
-      this.scripts.set(name, pending);
-    }
-    return pending;
+  async script(value: string): Promise<void> {
+    try {
+      const name = resourceName(value);
+      let pending = this.scripts.get(name);
+      if (!pending) {
+        pending = this.url(name).then(url => new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = url; script.async = false;
+          script.onload = () => { script.remove(); resolve(); };
+          script.onerror = () => { script.remove(); reject(new Error('Browser failed to load script')); };
+          document.head.appendChild(script);
+        }));
+        this.scripts.set(name, pending);
+        void pending.catch(() => this.scripts.delete(name));
+      }
+      await pending;
+    } catch (error) { throw resourceError('load script', value, error); }
   }
 }
