@@ -3,6 +3,11 @@ import type { ImageReport } from './packaging/images';
 export type Orientation = 'auto' | 'portrait' | 'landscape';
 export interface Entry { name: string; data: Buffer }
 export interface Channel {
+  runtimeFile?: string;
+  sdkPlacement?: 'head' | 'body';
+  supportedFormats?: string[];
+  reviewEntries?(entries: Entry[]): string[];
+  headHTML?(options: { orientation: Orientation }): string;
   id: string; displayName: string; sdkURL: string; packageFormat: string; resourceMode: string;
   archiveName: string; maxBytesExclusive: number; extraRootFiles: string[]; pending: string[];
   createFiles(options: { orientation: Orientation }): Array<{name: string; data: string}>;

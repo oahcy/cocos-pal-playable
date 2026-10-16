@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title><%= title %></title>
+  <%- headHTML %>
+<% if (sdkPlacement === 'head') { %>
+  <script src="<%= sdkURL %>"></script>
+<% } %>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -12,7 +16,9 @@
       <canvas id="GameCanvas" tabindex="0"></canvas>
     </div>
   </div>
+<% if (sdkPlacement !== 'head') { %>
   <script src="<%= sdkURL %>"></script>
+<% } %>
   <script src="./playable-runtime.js"></script>
 <% if (polyfillsURL) { %>
   <script src="<%= polyfillsURL %>"></script>

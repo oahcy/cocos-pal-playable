@@ -1,6 +1,6 @@
 type PlayableUnsubscribe = () => void;
 interface PlayableAPI {
-  /** Channel selected at build time. Currently only tiktok is implemented. */
+  /** Channel selected at build time: tiktok or google-ads. */
   readonly channel: string;
   readonly capabilities: { readonly openStore: boolean; readonly finishNotification: boolean; readonly containerLifecycle: boolean };
   /** SDK ready only; does not imply assets loaded or ad visible. */

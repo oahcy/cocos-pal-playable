@@ -193,3 +193,12 @@ TikTok SDK、方向文件、大小限制及专用规则移入 src/channels/tikto
 - 竖屏 game 场景正常，ready/viewable=true、paused=false，无启动失败提示；截图确认画面显示。实际拖动、7 次发射后自然出现结束页，捕获一次 finishPlayPlayable，未强制设置游戏状态；临时 SDK 观测包装已恢复并清理。
 - 点击结束页 DOWNLOAD 后 Android VIEW Intent 指向 https://example.com/，系统 Chrome 打开；广告 viewable=false、paused=true。切回 Pangle 后 viewable=true、paused=false，结束页仍存在。仅证明跳转链路，不要求测试站点网络加载成功。
 - 本次诊断通过 ai-runtime 完成，无新增落地测试脚本。未重测横屏、音效听感、胜利分支或广告后台审核；本条补充并更新上一节未做 APK 验收的状态。未提交、未推送。
+
+## Google Ads Playable 渠道（2026-10-16）
+
+- 新增 google-ads 渠道、独立 Exit API 运行时、head SDK 和方向元信息、ZIP 与文件数校验。
+- npm test：29 项通过，包含 Google 三方向 ZIP、无效结构、外链、文件数、包体、字体待审、运行时静音与可见性、编译后构建钩子及原 TikTok/单 HTML 回归。
+- 源码构建成功，已通过 install:cli 同步到 D:/code/cocos-cli/packages/platforms/playable。
+- 真实 smoke 项目经 cocos-cli 构建成功（启用 MD5），交付 .local/smoke-project/build/google-ads-smoke-delivery/google-ads.zip。
+- Google 字体规则要求核对来源；Cocos 内置 OpenSans 字体记录在 report.pending，不按扩展名声称其合规或不合规。
+- 未上传 Google Ads，未验证真实容器或商店跳转；业务动态网络、localStorage、SVG、响应式布局和音频仍需审核。

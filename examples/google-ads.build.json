@@ -1,0 +1,12 @@
+{
+  "debug": false,
+  "sourceMaps": false,
+  "md5Cache": false,
+  "packages": {
+    "playable": {
+      "channel": "google-ads",
+      "outputFormat": "channel-default",
+      "orientation": "auto"
+    }
+  }
+}

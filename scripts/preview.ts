@@ -3,6 +3,7 @@ import http from 'node:http';
 import JSZip from 'jszip';
 import { getChannel } from '../src/channel';
 const SDK_URL = getChannel('tiktok').sdkURL;
+const GOOGLE_SDK_URL = getChannel('google-ads').sdkURL;
 const archive = process.argv[2];
 if (!archive) throw new Error('Usage: npx tsx scripts/preview.ts <playable.zip|playable.html> [--mock-sdk]');
 const mock = process.argv.includes('--mock-sdk');
@@ -20,13 +21,13 @@ const types: Record<string, string> = { html: 'text/html', js: 'application/java
       res.setHeader('Cache-Control', 'no-store');
       if (mock && name === '__preview/sdk.js') {
         res.setHeader('Content-Type', 'application/javascript');
-        res.end('window.playableSDK={isReady:()=>true,isMuted:()=>false,isViewable:()=>true,sendEvent(event){console.info("[Playable preview]",event)},addEventListener(){}};window.openAppStore=function(){console.info("[Playable preview] openStore (mock; no redirect)");};');
+        res.end('window.ExitApi={exit(){console.info("[Playable preview] ExitApi.exit (mock; no redirect)");}};window.playableSDK={isReady:()=>true,isMuted:()=>false,isViewable:()=>true,sendEvent(event){console.info("[Playable preview]",event)},addEventListener(){}};window.openAppStore=function(){console.info("[Playable preview] openStore (mock; no redirect)");};');
         return;
       }
       const entry = zip?.file(name);
       if (!entry && !(html && name === 'index.html')) { res.writeHead(404); res.end('Not found'); return; }
       let data = html && name === 'index.html' ? html : await entry!.async('nodebuffer');
-      if (mock && name === 'index.html') data = Buffer.from(data.toString().replace(SDK_URL, '/__preview/sdk.js'));
+      if (mock && name === 'index.html') data = Buffer.from(data.toString().replace(SDK_URL, '/__preview/sdk.js').replace(GOOGLE_SDK_URL, '/__preview/sdk.js'));
       res.setHeader('Content-Type', (types[name.split('.').pop() || ''] || 'application/octet-stream'));
       res.end(data);
     } catch (error) { res.writeHead(400); res.end('Invalid request'); }

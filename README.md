@@ -1,7 +1,7 @@
 # Cocos Playable 平台（开发原型）
 
-私有源码仓库：`oahcy/cocos-pal-playable`。当前仅实现 TikTok HTML5 ZIP。
-Google Ads、AppLovin 和 pink 专用面板尚未实现。
+私有源码仓库：`oahcy/cocos-pal-playable`。支持 TikTok 和 Google Ads Playable HTML5 ZIP。
+AppLovin 和 pink 专用面板尚未实现。
 
 ## 本地接入
 
@@ -80,7 +80,7 @@ Playable 在 `onBeforeInit` 中将本次任务的 sourceMaps 设为 false，再�
 ## 渠道与打包职责
 
 - src/hooks.ts：连接 CLI 构建阶段，渲染 EJS 入口并交付打包。
-- src/channel.ts：渠道注册与查找；当前仅注册 TikTok。
+- src/channel.ts：渠道注册与查找；注册 TikTok 和 Google Ads Playable。
 - src/options.ts：平台参数默认值、解析与校验；config.ts 引用相同默认值。
 - src/builder-types.ts：CLI 构建钩子输入输出类型。
 - src/template.ts：页面渲染、启动入口编译及运行时复制；hooks.ts 保留生命周期调度与 MD5 配置。
@@ -181,3 +181,8 @@ node --import tsx scripts/preview.ts D:\prj\playable-demo\build\playable-deliver
 ```sh
 npm run single-html -- D:\prj\playable-demo\build\playable 1 base122
 ```
+
+
+## Google Ads Playable
+
+渠道标识 `google-ads`，示例见 `examples/google-ads.build.json`，完整接入和验证边界见 [Google Ads 说明](docs/google-ads.md)。默认交付 `google-ads.zip`，通过 `playable.openStore()` 调用 Google Exit API。

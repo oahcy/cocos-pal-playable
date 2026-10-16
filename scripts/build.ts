@@ -14,5 +14,7 @@ const root = path.resolve(__dirname, '..');
   // Runtime is emitted as part of the distributable, never source-mapped.
   await esbuild.build({ entryPoints: [path.join(root, 'runtime/entries/tiktok.ts')],
     outfile: path.join(root, 'dist/playable-runtime.js'), bundle: true, platform: 'browser', format: 'iife', minify: true, target: 'es2017' });
+  await esbuild.build({ entryPoints: [path.join(root, 'runtime/entries/google-ads.ts')],
+    outfile: path.join(root, 'dist/google-ads-runtime.js'), bundle: true, platform: 'browser', format: 'iife', minify: true, target: 'es2017' });
   await esbuild.build({ entryPoints: [path.join(root, 'runtime/entries/single-html.ts')], outfile: path.join(root, 'dist/single-html-runtime.js'), bundle: true, platform: 'browser', format: 'iife', minify: true, target: 'es2017' });
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -15,6 +15,7 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
   const channel = getChannel(channelId);
   const requested = readOutputFormat(imageOptions.outputFormat);
   const format = requested === 'channel-default' ? channel.packageFormat : requested;
+  if (channel.supportedFormats && !channel.supportedFormats.includes(format)) throw new Error(channel.displayName + ' does not support ' + format + '; supported formats: ' + channel.supportedFormats.join(', '));
   const channelDefaultFormat = format === channel.packageFormat;
   const encode = format === 'single-html'
     ? (entries: Entry[]) => encodeSingleHTML(entries,
@@ -42,6 +43,7 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     verification: 'local-static-only', pending: [...channel.pending, ...(channelDefaultFormat ? [] : ['Format verification only: not the channel default delivery format; size cap is retained conservatively'])] };
   try {
     const originalEntries = collect(root, channel);
+    report.pending.push(...(channel.reviewEntries?.(originalEntries) || []));
     validate(originalEntries, channel);
     const { entries, report: images } = await compressImages(originalEntries, settings);
     report.images = images;
