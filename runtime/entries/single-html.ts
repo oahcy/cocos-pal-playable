@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { decodeArchive } from '../embedded/embedded-codec';
 import { EmbeddedStore, VIRTUAL_ROOT, resourceError } from '../embedded/store';
 import { installEmbeddedAssets, type EmbeddedEngine } from '../embedded/engine';
 import type {} from '../index';
@@ -9,7 +10,9 @@ declare const System: SystemLoader;
 async function boot(): Promise<void> {
   const manifest = JSON.parse(document.getElementById('embedded-manifest')!.textContent!) as Manifest;
   const zipElement = document.getElementById('embedded-archive')!;
-  const zip = await JSZip.loadAsync(zipElement.textContent!, { base64: true }).catch(error => { throw resourceError('open archive', 'embedded-archive', error); });
+  const zip = await Promise.resolve().then(() =>
+    JSZip.loadAsync(decodeArchive(zipElement.textContent!, zipElement.dataset.encoding)),
+  ).catch(error => { throw resourceError('open archive', 'embedded-archive', error); });
   const store = new EmbeddedStore(zip);
   zipElement.remove();
   if (manifest.polyfills) await store.script(manifest.polyfills);

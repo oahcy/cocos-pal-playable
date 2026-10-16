@@ -1,5 +1,6 @@
 export const title = "Playable Ads";
 export const options = {
+  "embeddedEncoding": "Single HTML encoding",
   "outputFormat": "Output format",
   "channel-default": "Channel default",
   "directory-zip": "Directory ZIP",

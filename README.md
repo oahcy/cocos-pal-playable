@@ -175,3 +175,9 @@ node --import tsx scripts/preview.ts D:\prj\playable-demo\build\playable-deliver
 - settings 使用内存 JSON 地址；插件脚本在项目初始化阶段依序加载。无需修改引擎、CLI，也不替换全局 XMLHttpRequest/fetch。
 - 当前适配已有 SystemJS/Application 启动结构；WASM、CCONB、视频、scoped import map、CSS @import 明确报错。自定义网络请求不自动转为内嵌资源。
 - 只为实际请求的文件创建 Blob，JSON 缓存解压文本并独立解析，避免对象修改相互影响。已创建 Blob 保留到页面销毁；暂不提前释放音频、字体引用。控制台错误包含读取阶段与资源路径。仍需更多项目和移动 WebView 验证。
+
+单 HTML 可配置 `packages.playable.embeddedEncoding: "base122"`，默认 `"base64"`。仅影响单 HTML，ZIP 不变。Base122 减少编码膨胀，不改变图片质量；目标广告容器仍需验证。
+
+```sh
+npm run single-html -- D:\prj\playable-demo\build\playable 1 base122
+```

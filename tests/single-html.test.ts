@@ -149,3 +149,43 @@ test('compiled build hook shares ZIP packaging, preserves SDK, and isolates form
   assert.equal(JSON.parse(fs.readFileSync(root + '-delivery/single-html.report.json', 'utf8')).status, 'failed');
   assert.deepEqual(fs.readFileSync(zip.archive), previousZip);
 });
+
+
+test('Base122 preserves every byte and partial groups in HTML-safe UTF-8', async () => {
+  const { encodeBase122, decodeBase122 } = await import('../runtime/embedded/base122');
+  const { randomBytes } = await import('node:crypto');
+  for (const bytes of [Buffer.alloc(0), Buffer.from(Array.from({length: 256}, (_, i) => i)), ...Array.from({length: 32}, (_, i) => randomBytes(i)), randomBytes(65536)]) {
+    const encoded = encodeBase122(bytes);
+    assert.equal(/[\x00\r\n"&\\<]/.test(encoded), false);
+    assert.deepEqual(Buffer.from(decodeBase122(Buffer.from(encoded, 'utf8').toString('utf8'))), bytes);
+  }
+  const binary = randomBytes(4096);
+  const html = (await encodeSingleHTML([...entries(), {name: 'assets/raw.bin', data: binary}], '', 'https://example.invalid/sdk.js', undefined, 'base122')).toString();
+  assert.ok(html.includes('data-encoding="base122"'));
+  const payload = html.match(/id="embedded-archive"[^>]*>([^<]+)/)![1];
+  const zip = await JSZip.loadAsync(decodeBase122(payload));
+  assert.deepEqual(await zip.file('assets/raw.bin')!.async('nodebuffer'), binary);
+  const { readOptions } = await import('../src/options');
+  assert.equal(readOptions({}).embeddedEncoding, 'base64');
+  assert.equal(readOptions({packages: {playable: {embeddedEncoding: 'base122'}}}).embeddedEncoding, 'base122');
+  assert.throws(() => readOptions({packages: {playable: {embeddedEncoding: 'bad' as never}}}), /Unsupported embeddedEncoding/);
+});
+
+
+test('shared archive codec preserves bytes, defaults and rejects unknown encodings', async () => {
+  const { encodeArchive, decodeArchive, embeddedEncodings } = await import('../runtime/embedded/embedded-codec');
+  const { randomBytes } = await import('node:crypto');
+  for (const bytes of [Buffer.alloc(0), Buffer.from([0, 13, 10, 255]), randomBytes(100003)]) {
+    assert.equal(encodeArchive(bytes), bytes.toString('base64'));
+    assert.deepEqual(Buffer.from(decodeArchive(encodeArchive(bytes))), bytes);
+    for (const encoding of embeddedEncodings) {
+      const html = (await encodeSingleHTML([...entries(), { name: 'assets/raw.bin', data: bytes }], '', 'https://example.invalid/sdk.js', undefined, encoding)).toString();
+      const payload = html.match(/id="embedded-archive"[^>]*>([^<]+)/)![1];
+      const zip = await JSZip.loadAsync(decodeArchive(payload, encoding));
+      assert.deepEqual(await zip.file('assets/raw.bin')!.async('nodebuffer'), bytes);
+    }
+  }
+  for (const encoding of ['bad', 'toString', '__proto__', null]) {
+    assert.throws(() => decodeArchive('', encoding), /Unsupported embeddedEncoding/);
+  }
+});

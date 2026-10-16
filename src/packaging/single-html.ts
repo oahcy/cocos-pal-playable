@@ -1,9 +1,11 @@
 import path from 'node:path';
+import { encodeArchive, defaultEmbeddedEncoding, readEmbeddedEncoding, type EmbeddedEncoding } from '../../runtime/embedded/embedded-codec';
 import Ejs from 'ejs';
 import encodeDirectoryZip from './directory-zip';
 import type { Entry } from '../types';
 const base = 'https://playable.invalid/';
-export async function encodeSingleHTML(entries: Entry[], runtime: string, sdkURL: string, template = path.join(__dirname, '../../static/templates/single-html.ejs')): Promise<Buffer> {
+export async function encodeSingleHTML(entries: Entry[], runtime: string, sdkURL: string, template = path.join(__dirname, '../../static/templates/single-html.ejs'), embeddedEncoding: EmbeddedEncoding = defaultEmbeddedEncoding): Promise<Buffer> {
+  readEmbeddedEncoding(embeddedEncoding);
   const files = new Map(entries.map(entry => [entry.name, entry.data]));
   const read = (name: string) => { const data = files.get(name); if (!data) throw new Error('Missing single HTML input: ' + name); return data.toString(); };
   const one = (pattern: RegExp) => { const names = [...files.keys()].filter(name => pattern.test(name)); if (names.length !== 1) throw new Error('Expected one single HTML input matching ' + pattern); return names[0]; };
@@ -33,6 +35,6 @@ export async function encodeSingleHTML(entries: Entry[], runtime: string, sdkURL
   return Buffer.from(await Ejs.renderFile(template, {
     sdkURL, channelRuntime: escapeScript(read('playable-runtime.js')),
     css: css.replace(/<\/style/gi, '<\\/style'), runtime: escapeScript(runtime),
-    manifest: JSON.stringify({ system, polyfills, importMap, settings, entry }).replace(/</g, '\\u003c'), archive: data.toString('base64'),
+    manifest: JSON.stringify({ system, polyfills, importMap, settings, entry }).replace(/</g, '\\u003c'), embeddedEncoding, archive: encodeArchive(data, embeddedEncoding),
   }));
 }

@@ -4,7 +4,7 @@
 <title>Playable</title><style><%- css %></style></head>
 <body><div id="GameDiv" cc_exact_fit_screen="true"><div id="Cocos3dGameContainer"><canvas id="GameCanvas" tabindex="0"></canvas></div></div>
 <script id="embedded-manifest" type="application/json"><%- manifest %></script>
-<script id="embedded-archive" type="application/octet-stream"><%- archive %></script>
+<script id="embedded-archive" data-encoding="<%= embeddedEncoding %>" type="application/octet-stream"><%- archive %></script>
 <script src="<%= sdkURL %>"></script>
 <script><%- channelRuntime %></script>
 <script><%- runtime %></script></body></html>

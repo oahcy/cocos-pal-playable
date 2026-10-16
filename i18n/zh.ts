@@ -1,5 +1,6 @@
 export const title = "试玩广告";
 export const options = {
+  "embeddedEncoding": "单 HTML 内嵌编码",
   "outputFormat": "输出格式",
   "channel-default": "渠道默认",
   "directory-zip": "目录 ZIP",

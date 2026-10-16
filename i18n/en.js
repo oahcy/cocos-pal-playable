@@ -27,6 +27,7 @@ __export(en_exports, {
 module.exports = __toCommonJS(en_exports);
 var title = "Playable Ads";
 var options = {
+  "embeddedEncoding": "Single HTML encoding",
   "outputFormat": "Output format",
   "channel-default": "Channel default",
   "directory-zip": "Directory ZIP",

@@ -27,6 +27,7 @@ __export(zh_exports, {
 module.exports = __toCommonJS(zh_exports);
 var title = "\u8BD5\u73A9\u5E7F\u544A";
 var options = {
+  "embeddedEncoding": "\u5355 HTML \u5185\u5D4C\u7F16\u7801",
   "outputFormat": "\u8F93\u51FA\u683C\u5F0F",
   "channel-default": "\u6E20\u9053\u9ED8\u8BA4",
   "directory-zip": "\u76EE\u5F55 ZIP",
