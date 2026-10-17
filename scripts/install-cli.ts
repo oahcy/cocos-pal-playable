@@ -1,6 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-const source = path.resolve(__dirname, '..');
+import { readFiles, verifyFiles } from './release/files';
+const prepared = process.argv[3];
+const source = prepared ? path.resolve(prepared) : path.resolve(__dirname, '..');
+if (prepared) {
+  const release = verifyFiles(readFiles(source));
+  if (release.host !== 'cli' || release.platform !== process.platform || release.arch !== process.arch) throw new Error('Incompatible prepared CLI plugin');
+}
 const root = path.resolve(process.argv[2] || '');
 if (!process.argv[2] || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).name !== 'cocos-cli') {
   throw new Error('Usage: npx tsx scripts/install-cli.ts <cocos-cli-root>');
@@ -29,6 +35,7 @@ for (const directory of ['static', 'i18n', 'docs']) {
 fs.mkdirSync(path.join(target, 'runtime'), { recursive: true });
 fs.copyFileSync(path.join(source, 'runtime/playable.d.ts'), path.join(target, 'runtime/playable.d.ts'));
 fs.copyFileSync(path.join(source, 'README.md'), path.join(target, 'README.md'));
+if (prepared) fs.cpSync(path.join(source, 'node_modules'), path.join(target, 'node_modules'), { recursive: true });
 const manifest = JSON.parse(fs.readFileSync(path.join(source, 'package.json'), 'utf8'));
 delete manifest.dependencies;
 delete manifest.devDependencies;

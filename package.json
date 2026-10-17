@@ -19,7 +19,8 @@
     "test": "tsx scripts/build.ts && tsx --test tests/*.test.ts",
     "install:cli": "tsx scripts/install-cli.ts",
     "preview": "tsx scripts/preview.ts",
-    "single-html": "tsx scripts/single-html.ts"
+    "single-html": "tsx scripts/single-html.ts",
+    "plugin": "tsx scripts/plugin.ts"
   },
   "contributes": {
     "builder": {

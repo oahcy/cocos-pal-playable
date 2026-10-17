@@ -195,4 +195,8 @@ npm run single-html -- D:\prj\playable-demo\build\playable 1 base122
 - `src/package.ts`、`src/packaging/`：共用渠道校验、压缩及 ZIP/HTML 交付。`PackagingResources` 可显式传入模板和运行时目录，适应不同插件安装布局。
 - `runtime/`：广告运行时与内嵌资源加载。历史引擎的启动结构、SystemJS 和资源管线兼容性仍需逐版本验证，宿主隔离不等于已经兼容历史 Creator。
 
-后续 Creator 按版本差异增加独立适配入口，将其配置、路径和编译能力转换成上述接口；不复制打包核心。本轮不包含 Creator 插件清单、面板、白名单或热更接入。
+后续 Creator 按版本差异增加独立适配入口，将其配置、路径和编译能力转换成上述接口；不复制打包核心。现已加入 Creator 3.8.3 的实验构建插件入口，说明见 [Creator 适配](docs/creator-383.md)，编辑器端验收仍待完成。
+
+## 独立插件与 cocos-pack 接入准备
+
+新增 `npm run plugin -- generate|pack|verify`，将源码编译、独立插件生成和发布 ZIP 分开。当前包含 CLI 与 Creator 3.8.3 实验适配，其他历史版本尚未接入。目录与命令见 [迁移说明](docs/cocos-pack-integration.md)。现有 `build`、`install:cli` 和广告素材打包命令保留。

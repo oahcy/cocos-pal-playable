@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "cli": {
+      "adapter": "cli",
+      "nodeTarget": "node22",
+      "runtime": "systemjs",
+      "layout": "cli-platform",
+      "externalDependencies": [
+        "sharp"
+      ]
+    },
+    "creator-383": {
+      "adapter": "creator-383",
+      "nodeTarget": "node16.14",
+      "runtime": "systemjs",
+      "layout": "creator-extension",
+      "externalDependencies": [
+        "sharp"
+      ]
+    }
+  },
+  "creatorVersions": {
+    "3.8.3": "creator-383"
+  }
+}

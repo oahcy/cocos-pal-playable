@@ -1,0 +1,40 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { selectProfile } from '../scripts/release/profile';
+import { generatePlugin } from '../scripts/release/generate';
+import { packPlugin, verifyArchive } from '../scripts/release/archive';
+import { verifyFiles, readFiles } from '../scripts/release/files';
+
+test('unsupported Creator targets fail without generating a package', () => {
+  assert.equal(selectProfile().adapter, 'cli');
+  assert.throws(() => selectProfile('creator', '3.8.2'), /not adapted/);
+  assert.throws(() => selectProfile('other'), /Unsupported host/);
+});
+test('standalone plugin carries native dependencies, validates hashes and backs up releases', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'playable-release-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const plugin = path.join(root, 'plugin');
+  await generatePlugin(plugin);
+  const release = verifyFiles(readFiles(plugin));
+  assert.equal(release.host, 'cli');
+  assert.ok(release.files['node_modules/sharp/package.json']);
+  assert.ok(!fs.existsSync(path.join(plugin, 'src')));
+  assert.ok(!fs.existsSync(path.join(plugin, 'tests')));
+  await assert.rejects(generatePlugin(plugin), /already exists/);
+  const zip = path.join(root, 'playable.zip');
+  await packPlugin(plugin, zip);
+  assert.equal((await verifyArchive(zip)).pluginVersion, release.pluginVersion);
+  const original = fs.readFileSync(zip);
+  await packPlugin(plugin, zip);
+  assert.deepEqual(fs.readFileSync(zip), original);
+  assert.ok(fs.readdirSync(root).some(name => name.startsWith('backup-')));
+  assert.deepEqual(JSON.parse(fs.readFileSync(zip + '.diff.json', 'utf8')), { added: [], removed: [], changed: [] });
+  fs.appendFileSync(path.join(plugin, 'dist/hooks.cjs'), '//changed');
+  await assert.rejects(packPlugin(plugin, zip), /checksum mismatch/);
+  assert.deepEqual(fs.readFileSync(zip), original);
+  fs.writeFileSync(path.join(plugin, 'unexpected.txt'), 'unexpected');
+  assert.throws(() => verifyFiles(readFiles(plugin)), /file set mismatch/);
+});

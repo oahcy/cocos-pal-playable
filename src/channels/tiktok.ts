@@ -12,7 +12,7 @@ const channel: Channel = {
   extraRootFiles: ['config.json'],
   pending: ['TikTok official preview', 'device/container lifecycle', 'package-local HTTP loading', 'dynamic network requests', 'sound and safe areas', 'SDK ready-resource manifest (startup dependency list)'],
   createFiles({ orientation }) {
-    if (!Object.hasOwn(orientations, orientation)) throw new Error('Unsupported orientation: ' + orientation);
+    if (!Object.prototype.hasOwnProperty.call(orientations, orientation)) throw new Error('Unsupported orientation: ' + orientation);
     return [{ name: 'config.json', data: JSON.stringify({ Playable_orientation: orientations[orientation] }) }];
   },
   allowsReference(from, value) {
