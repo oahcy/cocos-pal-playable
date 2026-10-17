@@ -1,7 +1,6 @@
 import { defaultEmbeddedEncoding, readEmbeddedEncoding, type EmbeddedEncoding } from '../runtime/embedded/embedded-codec';
 export { embeddedEncodings, readEmbeddedEncoding, type EmbeddedEncoding } from '../runtime/embedded/embedded-codec';
 import { getChannel } from './channel';
-import type { BuildOptions } from './builder-types';
 import type { Orientation } from './types';
 
 export interface ImageOptions { imageCompression?: 'none' | 'lossy'; imageQuality?: number }
@@ -23,8 +22,8 @@ export function readImageOptions(options: ImageOptions = {}) {
   if (!Number.isInteger(imageQuality) || imageQuality < 1 || imageQuality > 100) throw new Error('imageQuality must be an integer from 1 to 100');
   return { imageCompression, imageQuality };
 }
-export function readOptions(options: BuildOptions): { channel: string; orientation: Orientation; outputFormat: OutputFormat; embeddedEncoding: EmbeddedEncoding } & Required<ImageOptions> {
-  const settings = options.packages?.playable || {};
+export interface PlayableOptions extends PackageOptions { channel?: string; orientation?: string }
+export function normalizeOptions(settings: PlayableOptions = {}): { channel: string; orientation: Orientation; outputFormat: OutputFormat; embeddedEncoding: EmbeddedEncoding } & Required<ImageOptions> {
   const channel = settings.channel ?? defaults.channel;
   const orientation = settings.orientation ?? defaults.orientation;
   getChannel(channel);

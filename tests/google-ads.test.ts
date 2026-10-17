@@ -9,7 +9,7 @@ import JSZip from 'jszip';
 import { getChannel, channelIds } from '../src/channel';
 import { packageBuild } from '../src/package';
 import { createGoogleAdsAdapter } from '../runtime/adapters/google-ads';
-import { readOptions } from '../src/options';
+import { readOptions } from '../src/adapters/cli/options';
 import { randomBytes } from 'node:crypto';
 
 const channel = getChannel('google-ads');

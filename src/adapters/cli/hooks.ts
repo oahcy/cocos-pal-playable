@@ -1,10 +1,10 @@
 import type { BuildOptions, InitializedOptions, BuildResult, BuildContext } from './builder-types';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getChannel } from './channel';
+import { getChannel } from '../../channel';
 import { readOptions } from './options';
 import { generatePlayableTemplate } from './template';
-import { packageBuild } from './package';
+import { packageBuild } from '../../package';
 export const throwError = true;
 export function onBeforeInit(options: BuildOptions) {
   readOptions(options);

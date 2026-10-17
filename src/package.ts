@@ -1,3 +1,4 @@
+import { defaultResources, type PackagingResources } from './resources';
 import { compressImages } from './packaging/images';
 import { readImageOptions, readOutputFormat, readEmbeddedEncoding, type PackageOptions } from './options';
 import fs from 'node:fs';
@@ -9,7 +10,7 @@ import { encodeSingleHTML } from './packaging/single-html';
 import encodeDirectoryZip from './packaging/directory-zip';
 import type { Entry, PackageReport } from './types';
 const encoders: Record<string, (entries: Entry[]) => Promise<Buffer>> = { 'directory-zip': encodeDirectoryZip };
-async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOptions: PackageOptions = {}) {
+async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOptions: PackageOptions = {}, resources: PackagingResources = defaultResources) {
   const embeddedEncoding = readEmbeddedEncoding(imageOptions.embeddedEncoding);
   const settings = readImageOptions(imageOptions);
   const channel = getChannel(channelId);
@@ -19,8 +20,8 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
   const channelDefaultFormat = format === channel.packageFormat;
   const encode = format === 'single-html'
     ? (entries: Entry[]) => encodeSingleHTML(entries,
-      fs.readFileSync(path.join(__dirname, '../dist/single-html-runtime.js'), 'utf8'), channel.sdkURL,
-      path.join(__dirname, '../static/templates/single-html.ejs'), embeddedEncoding)
+      fs.readFileSync(path.join(resources.runtime, 'single-html-runtime.js'), 'utf8'), channel.sdkURL,
+      path.join(resources.templates, 'single-html.ejs'), embeddedEncoding)
     : encoders[format];
   if (!encode) throw new Error('Unsupported playable packaging strategy: ' + format);
   const root = fs.realpathSync(inputRoot);

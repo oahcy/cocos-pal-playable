@@ -1,31 +1,39 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Ejs from 'ejs';
-import type { BuildContext, BuildOptions, BuildResult } from './builder-types';
-import type { Channel } from './types';
-import { readOptions } from './options';
+import type { Channel, Entry, Orientation } from './types';
+import { defaultResources, type PackagingResources } from './resources';
 
-export async function generatePlayableTemplate(context: BuildContext, options: BuildOptions, result: BuildResult, channel: Channel) {
-  const root = result.paths.dir;
-  const url = (target: string) => './' + path.relative(root, target).split(path.sep).map(encodeURIComponent).join('/');
-  const templateDir = path.join(__dirname, '../static/templates');
-  const bootstrap = await Ejs.renderFile(path.join(templateDir, 'index.ts.ejs'), {
-    applicationURL: JSON.stringify(url(result.paths.applicationJS)),
+export interface TemplateInput {
+  root: string;
+  applicationJS: string;
+  systemJs: string;
+  importMap: string;
+  polyfillsJs?: string;
+  title?: string;
+  orientation: Orientation;
+}
+export type CompileBootstrap = (source: string) => Promise<string | undefined>;
+
+/** Returns files without reading host options or mutating a host build result. */
+export async function renderPlayableTemplate(input: TemplateInput, channel: Channel, compile: CompileBootstrap,
+  resources: PackagingResources = defaultResources): Promise<Entry[]> {
+  const url = (target: string) => './' + path.relative(input.root, target).split(path.sep).map(encodeURIComponent).join('/');
+  const bootstrap = await Ejs.renderFile(path.join(resources.templates, 'index.ts.ejs'), {
+    applicationURL: JSON.stringify(url(input.applicationJS)),
   });
-  const transformed = await context.utils.transformCode(bootstrap, { importMapFormat: 'systemjs' });
+  const transformed = await compile(bootstrap);
   if (!transformed) throw new Error('Could not compile playable bootstrap');
-  result.paths.indexJs = path.join(root, 'index.js');
-  result.paths.indexHTML = path.join(root, 'index.html');
-  fs.writeFileSync(result.paths.indexJs, transformed);
-  fs.copyFileSync(path.join(__dirname, channel.runtimeFile || 'playable-runtime.js'), path.join(root, 'playable-runtime.js'));
-  fs.copyFileSync(path.join(templateDir, 'style.css'), path.join(root, 'style.css'));
-  fs.writeFileSync(result.paths.indexHTML, await Ejs.renderFile(path.join(templateDir, 'index.ejs'), {
-    title: options.name || 'Playable',
-    sdkURL: channel.sdkURL,
-    sdkPlacement: channel.sdkPlacement || 'body',
-    headHTML: channel.headHTML?.(readOptions(options)) || '',
-    polyfillsURL: result.paths.polyfillsJs ? url(result.paths.polyfillsJs) : '',
-    systemURL: url(result.paths.systemJs),
-    importMapURL: url(result.paths.importMap),
-  }));
+  const html = await Ejs.renderFile(path.join(resources.templates, 'index.ejs'), {
+    title: input.title || 'Playable', sdkURL: channel.sdkURL,
+    sdkPlacement: channel.sdkPlacement || 'body', headHTML: channel.headHTML?.(input) || '',
+    polyfillsURL: input.polyfillsJs ? url(input.polyfillsJs) : '',
+    systemURL: url(input.systemJs), importMapURL: url(input.importMap),
+  });
+  return [
+    { name: 'index.js', data: Buffer.from(transformed) },
+    { name: 'index.html', data: Buffer.from(html) },
+    { name: 'playable-runtime.js', data: fs.readFileSync(path.join(resources.runtime, channel.runtimeFile || 'playable-runtime.js')) },
+    { name: 'style.css', data: fs.readFileSync(path.join(resources.templates, 'style.css')) },
+  ];
 }

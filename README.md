@@ -79,10 +79,10 @@ Playable 在 `onBeforeInit` 中将本次任务的 sourceMaps 设为 false，再�
 
 ## 渠道与打包职责
 
-- src/hooks.ts：连接 CLI 构建阶段，渲染 EJS 入口并交付打包。
+- src/adapters/cli/hooks.ts：连接 CLI 构建阶段，渲染 EJS 入口并交付打包。
 - src/channel.ts：渠道注册与查找；注册 TikTok 和 Google Ads Playable。
 - src/options.ts：平台参数默认值、解析与校验；config.ts 引用相同默认值。
-- src/builder-types.ts：CLI 构建钩子输入输出类型。
+- src/adapters/cli/builder-types.ts：CLI 构建钩子输入输出类型。
 - src/template.ts：页面渲染、启动入口编译及运行时复制；hooks.ts 保留生命周期调度与 MD5 配置。
 - src/channels/tiktok.ts：SDK 地址、方向文件、大小限制、外部引用例外和 TikTok 专用规则。
 - src/packaging/web-files.ts：收集构建资源、校验包内引用及远程资源配置。
@@ -186,3 +186,13 @@ npm run single-html -- D:\prj\playable-demo\build\playable 1 base122
 ## Google Ads Playable
 
 渠道标识 `google-ads`，示例见 `examples/google-ads.build.json`，完整接入和验证边界见 [Google Ads 说明](docs/google-ads.md)。默认交付 `google-ads.zip`，通过 `playable.openStore()` 调用 Google Exit API。
+
+### 宿主适配边界
+
+- `src/adapters/cli/`：CLI 的平台注册、配置读取、构建钩子、编译回调和结果回写。发布入口仍为 `dist/config.cjs`、`dist/hooks.cjs`。
+- `src/options.ts`：接收平铺的 `PlayableOptions`，不读取宿主的 `packages` 或编辑器全局对象。
+- `src/template.ts`：接收入口文件路径、渠道和编译回调，返回文件列表；不修改宿主构建结果。
+- `src/package.ts`、`src/packaging/`：共用渠道校验、压缩及 ZIP/HTML 交付。`PackagingResources` 可显式传入模板和运行时目录，适应不同插件安装布局。
+- `runtime/`：广告运行时与内嵌资源加载。历史引擎的启动结构、SystemJS 和资源管线兼容性仍需逐版本验证，宿主隔离不等于已经兼容历史 Creator。
+
+后续 Creator 按版本差异增加独立适配入口，将其配置、路径和编译能力转换成上述接口；不复制打包核心。本轮不包含 Creator 插件清单、面板、白名单或热更接入。

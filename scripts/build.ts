@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, '..');
 (async () => {
   execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', path.join(root, 'tsconfig.json')], { stdio: 'inherit' });
   await esbuild.build({
-    entryPoints: ['config', 'hooks'].map(name => path.join(root, 'src', name + '.ts')),
+    entryPoints: ['config', 'hooks'].map(name => path.join(root, 'src/adapters/cli', name + '.ts')),
     outdir: path.join(root, 'dist'), outExtension: { '.js': '.cjs' },
     bundle: true, platform: 'node', target: 'node22', format: 'cjs', external: ['sharp'],
     minify: true, sourcemap: false,

@@ -1,5 +1,5 @@
-import { defaults, orientations, imageCompressionModes, outputFormats, embeddedEncodings } from './options';
-import { channelIds } from './channel';
+import { defaults, orientations, imageCompressionModes, outputFormats, embeddedEncodings } from '../../options';
+import { channelIds } from '../../channel';
 export default {
   displayName: 'i18n:playable.title', platformType: 'HTML5',
   textureCompressConfig: { platformType: 'web', support: { rgb: [], rgba: [] } },

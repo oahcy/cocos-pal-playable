@@ -54,7 +54,7 @@ imageCompression 默认 none，开启填 lossy；imageQuality 默认 80，范围
 
 ## pink 后续接入
 
-平台已在 src/config.ts 声明 imageCompression 和 imageQuality，CLI 从 packages.playable 读取并校验；pink 后续沿用同一配置结构传入，不重复实现压缩。面板提供压缩方式选择和质量输入，质量控件仅在 lossy 模式显示。当前尚未实现或联调 pink 面板，配置声明不代表面板已自动支持。
+平台已在 src/adapters/cli/config.ts 声明 imageCompression 和 imageQuality，CLI 从 packages.playable 读取并校验；pink 后续沿用同一配置结构传入，不重复实现压缩。面板提供压缩方式选择和质量输入，质量控件仅在 lossy 模式显示。当前尚未实现或联调 pink 面板，配置声明不代表面板已自动支持。
 
 ## 游戏接入
 

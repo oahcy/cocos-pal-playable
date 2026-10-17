@@ -115,8 +115,8 @@ test('compiled build hook shares ZIP packaging, preserves SDK, and isolates form
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path');
   const { packageBuild } = await import('../src/package');
   const { getChannel } = await import('../src/channel');
-  const { readOptions } = await import('../src/options');
-  const { onAfterBuild } = require('../dist/hooks.cjs') as typeof import('../src/hooks');
+  const { readOptions } = await import('../src/adapters/cli/options');
+  const { onAfterBuild } = require('../dist/hooks.cjs') as typeof import('../src/adapters/cli/hooks');
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'playable-formats-'));
   t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
   const root = path.join(parent, 'build');
@@ -128,8 +128,8 @@ test('compiled build hook shares ZIP packaging, preserves SDK, and isolates form
   fs.writeFileSync(path.join(root, 'config.json'), '{"Playable_orientation":0}');
   const zip = await packageBuild(root);
   const previousZip = fs.readFileSync(zip.archive);
-  const context: import('../src/builder-types').BuildContext = { utils: { async transformCode() { return ''; } }, buildExitRes: {} };
-  const result = { paths: { dir: root, applicationJS: path.join(root, 'application.js'), indexJs: path.join(root, 'index.js'), indexHTML: path.join(root, 'index.html'), systemJs: path.join(root, 'src/system.bundle.js'), importMap: path.join(root, 'src/import-map.json'), settings: path.join(root, 'src/settings.json') }, settings: { plugins: { jsList: [] }, assets: {}, screen: { orientation: 'auto' } } } as import('../src/builder-types').BuildResult;
+  const context: import('../src/adapters/cli/builder-types').BuildContext = { utils: { async transformCode() { return ''; } }, buildExitRes: {} };
+  const result = { paths: { dir: root, applicationJS: path.join(root, 'application.js'), indexJs: path.join(root, 'index.js'), indexHTML: path.join(root, 'index.html'), systemJs: path.join(root, 'src/system.bundle.js'), importMap: path.join(root, 'src/import-map.json'), settings: path.join(root, 'src/settings.json') }, settings: { plugins: { jsList: [] }, assets: {}, screen: { orientation: 'auto' } } } as import('../src/adapters/cli/builder-types').BuildResult;
   await onAfterBuild.call(context, { packages: { playable: { outputFormat: 'single-html' } } }, result);
   const report = context.buildExitRes.custom!.playable as import('../src/types').PackageReport;
   assert.equal(report.status, 'packaged'); assert.equal(report.packageFormat, 'single-html');
@@ -165,7 +165,7 @@ test('Base122 preserves every byte and partial groups in HTML-safe UTF-8', async
   const payload = html.match(/id="embedded-archive"[^>]*>([^<]+)/)![1];
   const zip = await JSZip.loadAsync(decodeBase122(payload));
   assert.deepEqual(await zip.file('assets/raw.bin')!.async('nodebuffer'), binary);
-  const { readOptions } = await import('../src/options');
+  const { readOptions } = await import('../src/adapters/cli/options');
   assert.equal(readOptions({}).embeddedEncoding, 'base64');
   assert.equal(readOptions({packages: {playable: {embeddedEncoding: 'base122'}}}).embeddedEncoding, 'base122');
   assert.throws(() => readOptions({packages: {playable: {embeddedEncoding: 'bad' as never}}}), /Unsupported embeddedEncoding/);
