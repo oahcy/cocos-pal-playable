@@ -1,6 +1,6 @@
 # cocos-pack 接入准备
 
-本阶段只改造当前工程。没有迁移源码、安装 Creator、声明 Creator 兼容版本或修改 cocos-pack。
+当前工程已提供 CLI 发布和 Creator 3.8.3 实验适配；尚未迁入 cocos-pack。
 
 ## 维护与产物边界
 
@@ -26,9 +26,9 @@ npm run plugin -- generate --host=cli --out=.local/plugin-cli-001
 不复制本工程的 `src/`、测试或无关未跟踪文件。保留第三方依赖许可文件和必要 JS/原生二进制。
 此阶段需要开发依赖已安装；安装生成的插件则不需要 npm install。
 
-`sharp` 及其生产依赖按实际嵌套版本收集，包含当前系统/架构的原生文件。
+CLI 产物中的 `sharp` 及其生产依赖按实际嵌套版本收集，包含当前系统/架构的原生文件。Creator 产物不携带 sharp，通过适配层使用编辑器版本。
 产物记录 `platform`、`arch`、Node 构建目标；当前只验证生成环境，不能跨系统/架构或直接装进历史 Electron。
-生成结束会在产物目录加载 hooks/config 并实际调用 sharp，避免仅有 JS 而缺原生库。
+生成结束在产物目录加载 hooks/config；CLI 额外实际调用打包的 sharp。Creator 宿主原生库通过独立适配测试及编辑器构建验证。
 
 ## 发布组装与校验
 

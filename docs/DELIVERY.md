@@ -1,24 +1,10 @@
-# TikTok 首版交付说明
+# 试玩配置与交付
 
-范围：CLI 构建 TikTok HTML5 ZIP，使用 Pangle 测试 APK 验证；不含其他渠道、pink 面板、广告后台审核或正式投放。
+CLI 安装见 [README](../README.md)，Creator 操作见 [Creator 3.8.3](creator-383.md)，Google 的专用规则见 [Google Ads](google-ads.md)。
 
-## 构建
+## 构建配置
 
-需要 Node.js 22、完成初始化的 cocos-cli，以及外部 HTML5 平台 SystemJS 兼容修复（见 README）。在本仓库执行：
-
-```powershell
-npm ci
-npm test
-npm run install:cli -- D:/code/cocos-cli
-node D:/code/cocos-cli/dist/cli.js build -j D:/prj/playable-demo -p playable -c D:/code/cocos-pal-playable/examples/tiktok.build.json
-```
-
-交付使用 debug=false 发布配置（examples/tiktok.build.json），以启用现有引擎/脚本压缩和资源序列化压缩。平台默认 debug=false，显式调试配置仍可覆盖；ZIP 已采用 DEFLATE level 9。
-产物位于项目 build/playable-delivery/tiktok.zip；同目录 report.json 记录大小、SHA-256、静态检查和待验项。广告平台上传 ZIP，不上传 report.json；构建失败时不可使用旧包。
-
-## 可选 PNG 有损压缩
-
-在构建配置中设置（完整示例：examples/tiktok.lossy.build.json）：
+CLI 从 packages.playable 读取以下参数；Creator 面板传入同一组参数。
 
 ```json
 {
@@ -26,72 +12,84 @@ node D:/code/cocos-cli/dist/cli.js build -j D:/prj/playable-demo -p playable -c 
   "packages": {
     "playable": {
       "channel": "tiktok",
+      "outputFormat": "channel-default",
+      "orientation": "auto",
       "imageCompression": "lossy",
-      "imageQuality": 80
+      "imageQuality": 80,
+      "embeddedEncoding": "base64"
     }
   }
 }
 ```
 
-imageCompression 默认 none，开启填 lossy；imageQuality 默认 80，范围为整数 1–100，越高越保真，不代表压缩百分比。100 仍可能有损，需要原图请设 none。
+| 参数 | 可选值与默认值 |
+| --- | --- |
+| channel | tiktok（默认）、google-ads |
+| outputFormat | channel-default（默认）、directory-zip、single-html；受渠道支持范围限制 |
+| orientation | auto（默认）、portrait、landscape |
+| imageCompression | none（默认）、lossy |
+| imageQuality | 整数 1–100，默认 80，越高越保真；不是压缩百分比 |
+| embeddedEncoding | base64（默认）、base122；仅单 HTML 生效 |
 
-当前只处理普通 8 位 PNG，采用调色板量化，保持路径、尺寸和 PNG 格式，支持透明背景；颜色和半透明像素会有近似。动画及高位深 PNG 保留，其他格式不变。不要对法线图、数据纹理等要求像素精确的项目开启此选项。
+完整配置见 examples/。发布构建使用 debug=false；CLI 自动关闭本次任务的 Source Maps。引擎属性混淆可参考 tiktok.mangle.build.json，业务脚本控制流混淆不在范围内。pink 专用面板尚未接入。
 
-处理发生在 onAfterBuild 收集资源之后、生成 ZIP 之前；项目原图及中间构建文件不变。PNG 本身和其 DEFLATE 体积均更小时才替换，否则保留原文件。report.json 的 images 字段记录质量、每张图的处理结果和前后大小（图像字节，最终 ZIP 大小见 bytes）。
+## 产物与预览
 
-有损模式需要宿主可用的 sharp 0.32.x 原生依赖；当前 cocos-cli 已有 0.32.6。插件将 sharp 保留为外部可选 peer 依赖，开发安装使用固定版本；关闭压缩时不会加载它，不将该工具打入广告 ZIP。
+输出在构建目录旁的 <目录>-delivery/，含广告包、报告和所有权标记。默认 TikTok 输出 tiktok.zip，Google 输出 google-ads.zip；报告记录体积、SHA-256、图片处理和待验项。上传广告包，不上传报告；构建失败不可沿用旧包。
 
-本项目实测（仅代表当前素材）：
+TikTok 单 HTML 输出 tiktok.experimental.html 和 single-html.report.json，与 ZIP 互不覆盖。它只用于格式验证，不表示 TikTok 接受此投放格式；报告标记 channelDefaultFormat=false，并保守沿用渠道大小上限。Google 当前只支持 ZIP。
 
-| 配置 | ZIP 字节 |
-| --- | ---: |
-| 不压缩图片 | 4,541,438 |
-| 质量 40 | 2,641,584 |
-| 质量 80 | 2,897,594 |
-| 质量 100 | 3,144,954 |
+已有试玩构建目录可重新封装为 HTML：
 
-质量 80 减少 36.2%，已复测 APK 启动、拖动、发射和自然结束页。质量 40/100 仅完成内存打包及图片解码检查，未做 APK 画面验收。
-
-## pink 后续接入
-
-平台已在 src/adapters/cli/config.ts 声明 imageCompression 和 imageQuality，CLI 从 packages.playable 读取并校验；pink 后续沿用同一配置结构传入，不重复实现压缩。面板提供压缩方式选择和质量输入，质量控件仅在 lossy 模式显示。当前尚未实现或联调 pink 面板，配置声明不代表面板已自动支持。
-
-## 游戏接入
-
-将 runtime/playable.d.ts 放到项目类型检查范围内。
-
-```ts
-// 用户主动点击下载按钮。
-playable.openStore();
-// 游戏自然结束；幂等，不自动跳转或绘制结束 UI。
-playable.finish();
-// 与业务自身静音设置共同决定是否发声；销毁组件时退订。
-const off = playable.onMuteChange(muted => { /* 更新业务音频状态 */ });
+```powershell
+npm run build
+npm run single-html -- <试玩构建目录> 80 base122
+npm run preview -- <ZIP或HTML路径> --mock-sdk
 ```
 
-启动器预加载启动场景并等待 SDK 与展示状态；模板无需业务手动启动。广告隐藏暂停主循环，返回只恢复广告自己施加的暂停。业务在广告隐藏期间新增 game.pause 的归属仍需协调。
+single-html 命令省略质量参数时保留原图。预览只有显式传入 --mock-sdk 才模拟 SDK，且不修改产物；正式环境缺少 SDK 会报错。
 
-## 2026-09-29 验收快照
+## 图片压缩
 
-本版当前交付包使用质量 80，大小 2,897,594 字节，SHA-256 5f49e44524679781662fc7809805054b925393da123d094af827b52592c4e4e5。下述早期包记录用于说明各项验收对应的产物；本版图片压缩的复测范围见上文。
+lossy 对普通 8 位 PNG 做调色板量化，保持路径、尺寸与 PNG 格式，但颜色和半透明像素可能近似。质量 100 仍可能有损；需要原图应选 none。动画、高位深 PNG 和其他图片格式保持不变；法线图、数据纹理等像素敏感素材不宜开启。
 
-原始 APK 补验对应代码 b85bade。随后使用发布配置优化：未开启图片压缩时 ZIP 4,541,438 字节，SHA-256 8a1981cfcafac709c78c5c3942608244c41dfedc200be950ce00f9be0d70436b，比调试包减少 6.33%。发布包已复测 APK 启动、拖动/发射和自然结束；胜利及完整生命周期记录对应前一调试包。
+处理发生在资源收集后、ZIP/HTML 编码前，原素材和中间构建文件不变。只有 PNG 自身及其 DEFLATE 体积都减小时才采用压缩结果，否则保留原文件。报告 images 记录逐图结果，最终包大小见 bytes。
 
-- 严格 TS 检查、11 项现有测试、真实项目构建通过。
-- APK 横屏 2856×1280、竖屏 1280×2856 均能启动、交互、进入结束页。视频阶段 viewable=false，游戏场景未启动；点击试玩后进入 game 场景。
-- 实际换色/旋转/发射，分数 31→64→73→87→118，经过 93 分触发胜利结束页，finishPlayPlayable 只发送一次；未修改分数或强制发出结束事件。竖屏另覆盖自然失败结束。
-- 用户确认听到音效；既有验证确认原生静音与业务状态同步、切后台暂停和返回恢复、下载跳转。
-- 发现 demo 常驻 Download 被换色按钮和底部装饰部分遮挡；结束页 CTA 可见。布局整体不标记通过，此项由 demo UI 调整。
-- APK 原生关闭/静音控件未遮住结束页 CTA。未取得 TikTok 官方安全区遮罩，不等同于 TikTok 信息流安全区通过。
+CLI 插件携带 sharp；Creator 从编辑器目录加载宿主版本。关闭压缩时不加载它，广告包中不包含该工具。
 
-## 首屏资源清单结论
+## 单 HTML 的资源加载
 
-在线 SDK 读取根目录 __playable_ready_resources__.json，预期相对路径数组；过滤音频、外链和 index.html 后，与 Resource Timing 对照，约每 300ms 检查一次，约 30 秒后仍有缺失则记录超时。读取失败会记录首屏监测错误。以上来自当前 SDK 实现观察，不是稳定公开协议。
+游戏文件以 ZIP 配合 Base64 或 Base122 内嵌；Base122 只减少编码膨胀，不改变画质。页面保留相同的渠道 SDK 引用和运行时，SDK 仍按渠道规则外链加载。
 
-[官方素材规范](https://ads.tiktok.com/resources/help/article/playable-ads?lang=en)没有在本次查阅内容中说明该清单的生成责任或格式；未确认是否由上传处理生成。当前不生成空清单或把整个 ZIP 列入，以免误报就绪/超时；保留 report.pending。若需要生产验收，应向平台确认该清单是否由制作方提供及首屏依赖口径，再实现生成规则。
+资源按需解压，并发请求复用解压任务和 Blob URL；SystemJS 保留原模块地址解析依赖。资源准备接在 load/preload 的 preprocess 之后，沿用引擎解码器；Bundle、合并 JSON、字体和插件脚本通过适配入口读取。不替换全局 XMLHttpRequest/fetch。
 
-[官方创建与测试说明](https://ads.tiktok.com/resources/help/article/how-to-create-playable-ads-on-tiktok-ads-manager?lang=en)要求单独用安全区遮罩检查 UI；技术校验不替代可玩性和安全区检查。
+JSON 缓存文本、每次独立解析；Blob 保留至页面销毁，不提前释放音频或字体引用。当前依赖 SystemJS/Application 启动结构，拒绝 WASM、CCONB、视频、scoped import map 和 CSS @import。自定义网络请求不会自动转为内嵌资源，目标移动 WebView 需单独验证。
+
+## 游戏接口与启动
+
+将 runtime/playable.d.ts 放入项目类型检查范围。按钮、结束 UI 和业务音频由游戏实现。
+
+```ts
+playable.openStore(); // 仅在用户主动点击时调用
+playable.finish();    // 自然结束时通知；幂等，不自动跳转
+const off = playable.onMuteChange(muted => { /* 更新业务音频 */ });
+// 组件销毁时调用 off()
+```
+
+- ready / onReady：仅表示 SDK 可用，不代表资源加载完毕或允许展示；已就绪时同步回调，未就绪时订阅一次。
+- openStore：转发渠道下载接口，失败抛错，不自行网页跳转。
+- finish：按渠道能力发送结束通知；TikTok 调用 finishPlayPlayable，不代表服务端确认。
+- viewable / onPause / onResume：合并页面与容器可见性，按状态变化通知。TikTok 初始查询完成前不展示，旧查询不得覆盖新事件。
+- onMuteChange：订阅时立即通知；首次触摸前、隐藏或 SDK 静音时应静音，不覆盖业务自身的静音设置。
+
+启动器预加载启动场景，等待 SDK 就绪和允许展示后启动游戏。广告隐藏时暂停，只恢复广告自己暂停的主循环；业务在隐藏期间再次 pause 的归属需自行协调。启动错误显示通用提示，具体原因留在控制台，订阅回调异常独立处理。
+
+运行时公共逻辑在 runtime/core.ts，启动控制在 runtime/startup.ts，渠道实现位于 runtime/adapters/；构建时显式选择 runtime/entries/ 入口。内部契约以 runtime/adapter.ts 为准，不做运行时渠道探测，__startPlayable 不是游戏 API。
 
 ## 验收边界
 
-测试 APK 从本地 HTTP 服务读取 ZIP 原始文件并加载官方 SDK，未上传正式广告后台；不能据此声明后台审核、真实投放资源加载或所有设备通过。剩余项：demo 常驻按钮遮挡、官方安全区、首屏清单责任确认及后台验证。
+本地校验和 report.status=packaged 不代表平台审核通过，已完成范围见 [验证记录](../VALIDATION.md)。动态请求、实际画面、音频、字体来源、官方安全区和后台投放仍需验证。
+
+TikTok SDK 曾观察到读取 __playable_ready_resources__.json 用于首屏监测；其生成责任和依赖口径尚未确认。当前不生成空清单或整包文件列表来伪造就绪，保留 report.pending。
+
+官方参考：[素材规范](https://ads.tiktok.com/resources/help/article/playable-ads?lang=en)、[创建与测试](https://ads.tiktok.com/resources/help/article/how-to-create-playable-ads-on-tiktok-ads-manager?lang=en)。

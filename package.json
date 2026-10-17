@@ -2,7 +2,7 @@
   "name": "@cocos/pal-playable",
   "version": "0.1.0",
   "private": true,
-  "description": "Private-source playable advertisement build platform for Cocos CLI",
+  "description": "Playable advertisement packaging for Cocos CLI and Creator",
   "license": "UNLICENSED",
   "type": "commonjs",
   "files": [
@@ -11,7 +11,8 @@
     "i18n/*.js",
     "runtime/playable.d.ts",
     "README.md",
-    "docs/wechat-alignment.md"
+    "docs",
+    "VALIDATION.md"
   ],
   "scripts": {
     "build": "tsx scripts/build.ts",

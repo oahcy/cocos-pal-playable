@@ -4,3 +4,4 @@ dist/
 .local/
 generated/
 CocosPack/
+i18n/*.js

@@ -27,14 +27,10 @@ npm run plugin -- pack --input=.local/creator-383 --out=.local/releases/3.8.3-pl
 
 发布 JavaScript 语法目标为 Node 16.14；Creator 版不携带 sharp，由适配层从 Editor.App.path/node_modules/sharp 加载宿主版本；CLI 仍携带自身依赖。构建目标不是实际宿主兼容证明，历史版本仍需分别验证。
 
-## 验证边界
+## 验证与范围
 
-自动测试覆盖：默认不启用、非法参数拒绝、独立插件清单/依赖加载、原型 getter 路径、SystemJS 编译回调、TikTok ZIP 与 Base122 单 HTML、远程资源拒绝。测试使用受控 Web 文件与模拟的 Creator 编译接口，不能替代编辑器端构建。
+Creator 面板中的 TikTok 有损压缩打包已验证，具体结果和未完成项统一见 [验证记录](../VALIDATION.md)。配置、压缩语义与游戏 API 见 [交付说明](DELIVERY.md)。
 
-2026-10-17 已通过 Creator 3.8.3 构建面板完成真实 demo 打包：有损压缩质量 80，38 张图片压缩成功，TikTok ZIP 为 3,396,587 字节（118 个文件），ZIP CRC 和报告 SHA-256 校验通过。36 项自动测试通过。命令行启动仍以 -1 退出；游戏运行、真实广告容器和 Creator 单 HTML 端到端验证尚未完成。隔离测试项目在 `.local/creator-383-smoke/`，原 demo 未改动。
+Creator 构建时将 sharp 导入映射到宿主适配文件，不修改全局 require，不回退到插件私有原生库。关闭压缩时不加载 sharp。
 
-Creator 2.x、独立 playable 平台入口、热更发布和 cocos-pack 批量调度不在这次范围内。
-
-## 压缩兼容修复
-
-已通过源码及安装目录确认 Creator 自带 sharp。Creator 产物构建时将 sharp 导入映射到独立宿主适配文件，复用编辑器版本；未修改全局 require，也不修改共享压缩算法。不提供回退到插件私有 sharp 的路径，以免再次同时加载两份原生库。自动测试覆盖无私有 sharp 的独立插件实际 PNG 压缩；本次真实 Creator 有损压缩构建已成功，未再发生之前的崩溃。
+Creator 2.x、独立 playable 平台入口、热更发布和 cocos-pack 批量调度尚未接入。
