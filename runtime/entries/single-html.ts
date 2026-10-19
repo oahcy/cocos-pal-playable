@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { decodeArchive } from '../embedded/embedded-codec';
 import { EmbeddedStore, VIRTUAL_ROOT, resourceError } from '../embedded/store';
+import { installEmbeddedFetch } from '../embedded/fetch';
 import { installEmbeddedAssets, type EmbeddedEngine } from '../embedded/engine';
 import type {} from '../index';
 import { showStartupError } from '../startup';
@@ -9,12 +10,23 @@ interface SystemLoader { instantiate(url: string, parent?: string): Promise<unkn
 declare const System: SystemLoader;
 async function boot(): Promise<void> {
   const manifest = JSON.parse(document.getElementById('embedded-manifest')!.textContent!) as Manifest;
-  const zipElement = document.getElementById('embedded-archive')!;
-  const zip = await Promise.resolve().then(() =>
-    JSZip.loadAsync(decodeArchive(zipElement.textContent!, zipElement.dataset.encoding)),
-  ).catch(error => { throw resourceError('open archive', 'embedded-archive', error); });
+  const zip = await Promise.resolve().then(() => {
+    const element = document.getElementById('embedded-archive')!;
+    try {
+      console.info('[Playable embedded] Decoding archive.');
+      const bytes = decodeArchive(element.textContent!, element.dataset.encoding);
+      console.info(`[Playable embedded] Opening ZIP (${bytes.byteLength} bytes).`);
+      return JSZip.loadAsync(bytes);
+    } finally {
+      // Removing the element alone keeps its large text alive while it is referenced.
+      // Clear it before ZIP parsing or engine startup can allocate more resources.
+      element.textContent = '';
+      element.remove();
+    }
+  }).catch(error => { throw resourceError('open archive', 'embedded-archive', error); });
+  console.info('[Playable embedded] Archive ready.');
   const store = new EmbeddedStore(zip);
-  zipElement.remove();
+  installEmbeddedFetch(window, store, error => showStartupError(document, error));
   if (manifest.polyfills) await store.script(manifest.polyfills);
   await store.script(manifest.system);
   const loaderPrototype = Object.getPrototypeOf(System) as SystemLoader;
@@ -49,6 +61,7 @@ async function boot(): Promise<void> {
       return engine;
     });
   };
+  console.info('[Playable embedded] Starting engine.');
   await System.import(VIRTUAL_ROOT + manifest.entry);
 }
 void boot().catch(error => showStartupError(document, error));

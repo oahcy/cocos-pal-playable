@@ -12,7 +12,11 @@ const codecs = {
     },
     decode(text: string): Uint8Array {
       const binary = atob(text);
-      return Uint8Array.from(binary, char => char.charCodeAt(0));
+      // Avoid Uint8Array.from(string, mapper), which materializes an intermediate
+      // iterable list in some engines before allocating the typed array.
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
     },
   },
   base122: { encode: encodeBase122, decode: decodeBase122 },

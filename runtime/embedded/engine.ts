@@ -6,13 +6,18 @@ interface ResourceTask { input: RequestItem[]; output: RequestItem[] }
 type Pipe = (task: ResourceTask, done: (error?: Error) => void) => void;
 interface ResourcePipeline { pipes: Pipe[]; insert(pipe: Pipe, index: number): void }
 export interface EmbeddedEngine extends PlayableEngine {
+  cclegacy?: { internal?: { decodeCCONBinary?: (bytes: Uint8Array) => unknown } };
   assetManager: {
     pipeline: ResourcePipeline; fetchPipeline: ResourcePipeline; preprocessPipe: Pipe;
-    downloader: { bundleVers: Record<string, string>; register(handlers: Record<string, (url: string, options: { version?: string }, done: Done) => void>): void };
+    downloader: {
+      bundleVers: Record<string, string>;
+      register(handlers: Record<string, (url: string, options: { version?: string }, done: Done) => void>): void;
+    };
   };
 }
 export function installEmbeddedAssets(engine: EmbeddedEngine, store: EmbeddedStore): void {
   const downloader = engine.assetManager.downloader;
+  const decodeCCONBinary = engine.cclegacy?.internal?.decodeCCONBinary;
   const fontExtensions = new Set(['.ttf', '.woff', '.woff2', '.otf', '.ttc', '.eot', '.font', '.svg']);
   const fonts = new Map<string, Promise<string>>();
   const loadFont = (url: string, _options: { version?: string }, done: Done) => {
@@ -31,6 +36,11 @@ export function installEmbeddedAssets(engine: EmbeddedEngine, store: EmbeddedSto
   downloader.register(Object.fromEntries([...fontExtensions].map(ext => [ext, loadFont])));
   // Packed JSON requests bypass transformPipeline, so handle them explicitly.
   downloader.register({
+    '.cconb': (url, _options, done) => {
+      if (!decodeCCONBinary) { done(new Error('[Playable embedded] Creator CCON decoder is unavailable')); return; }
+      store.arrayBuffer(url).then(data => decodeCCONBinary(new Uint8Array(data)))
+        .then(data => done(null, data), error => done(resourceError('load CCONB', url, error)));
+    },
     '.json': (url, _options, done) => { store.json(url).then(data => done(null, data), error => done(error)); },
     bundle: (nameOrURL, options, done) => {
       const name = nameOrURL.replace(/\/$/, '').split('/').pop()!;
@@ -46,7 +56,7 @@ export function installEmbeddedAssets(engine: EmbeddedEngine, store: EmbeddedSto
   const prepare: Pipe = (task, done) => {
     task.output = task.input;
     void Promise.allSettled(task.input.map(async item => {
-      if (fontExtensions.has(item.ext) || item.ext === 'bundle' || item.ext === '.json' || (!item.isNative && item.info?.packs)) return;
+      if (fontExtensions.has(item.ext) || item.ext === 'bundle' || item.ext === '.json' || item.ext === '.cconb' || (!item.isNative && item.info?.packs)) return;
       return { item, url: await store.url(item.url) };
     })).then(results => {
       const failed = results.find(result => result.status === 'rejected');

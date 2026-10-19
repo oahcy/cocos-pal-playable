@@ -93,11 +93,14 @@ test('Google runtime starts muted, uses page visibility and never exits on finis
   api.openStore(); assert.equal(exits, 1);
 });
 
-test('Google rejects compressed size overflow and flags font provenance, allows Google Fonts', async t => {
+test('Google retains oversized ZIP and flags font provenance, allows Google Fonts', async t => {
   const root = await fixture(t); fs.mkdirSync(path.join(root, 'assets'));
   const asset = path.join(root, 'assets/data.bin');
   fs.writeFileSync(asset, randomBytes(5000100));
-  await assert.rejects(packageBuild(root, 'google-ads'), /must be smaller/);
+  const oversized = await packageBuild(root, 'google-ads');
+  assert.equal(oversized.status, 'packaged');
+  assert.equal(oversized.sizeLimitExceeded, true);
+  assert.ok(fs.existsSync(oversized.archive));
   fs.unlinkSync(asset);
   const font = path.join(root, 'assets/test.woff2'); fs.writeFileSync(font, 'font');
   const fontReport = await packageBuild(root, 'google-ads');

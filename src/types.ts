@@ -17,6 +17,7 @@ export interface Channel {
 export interface PackageReport {
   channel: string; status: 'failed' | 'packaged'; archive: string; maxBytesExclusive: number; verification: 'local-static-only'; pending: string[];
   packageFormat?: string; resourceMode?: 'files' | 'embedded'; channelDefaultFormat?: boolean;
+  sizeLimitExceeded?: boolean; sizeLimitError?: string;
   embeddedEncoding?: EmbeddedEncoding;
   images?: ImageReport; bytes?: number; files?: Array<{path: string; bytes: number}>; sha256?: string; error?: string;
 }

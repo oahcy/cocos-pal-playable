@@ -29,17 +29,31 @@ test('single HTML contains exact binary assets and preserves the channel SDK and
   const manifest = JSON.parse(html.match(/id="embedded-manifest"[^>]*>([^<]+)/)![1]);
   assert.equal(manifest.importMap.imports.cc, 'https://playable.invalid/cocos-js/cc.js');
 });
-test('prototype rejects unsupported native formats and CSS imports', async () => {
-  await assert.rejects(encodeSingleHTML([...entries(), { name: 'assets/physics.wasm', data: Buffer.alloc(0) }], '', 'https://example.invalid/sdk.js'), /does not yet support/);
+test('single HTML embeds CCONB, video and WASM resources and keeps CSS imports explicit', async () => {
+  const cconb = Buffer.from([0x43, 0x43, 0x4f, 0x4e, 0, 0, 0, 0]);
+  const html = (await encodeSingleHTML([...entries(), { name: 'assets/main/import/pack.cconb', data: cconb }], '', 'https://example.invalid/sdk.js')).toString();
+  const payload = html.match(/id="embedded-archive"[^>]*>([^<]+)/)![1];
+  const zip = await JSZip.loadAsync(payload, { base64: true });
+  assert.deepEqual(await zip.file('assets/main/import/pack.cconb')!.async('nodebuffer'), cconb);
+  const media = ['assets/video.mp4', 'assets/video.webm', 'assets/physics.wasm'].map(name => ({ name, data: Buffer.from([0, 1, 2, 255]) }));
+  const mediaHTML = (await encodeSingleHTML([...entries(), ...media], '', 'https://example.invalid/sdk.js')).toString();
+  const mediaPayload = mediaHTML.match(/id="embedded-archive"[^>]*>([^<]+)/)![1];
+  const mediaZip = await JSZip.loadAsync(mediaPayload, { base64: true });
+  for (const item of media) assert.deepEqual(await mediaZip.file(item.name)!.async('nodebuffer'), item.data);
   const input = entries(); input.find(e => e.name === 'style.css')!.data = Buffer.from('@import "other.css"');
   await assert.rejects(encodeSingleHTML(input, '', 'https://example.invalid/sdk.js'), /CSS @import/);
 });
 test('embedded lookup normalizes local queries and fails on missing or external files', async () => {
   assert.equal(resourceName('./assets/a%20b.png?v=123'), 'assets/a b.png');
   assert.throws(() => resourceName('https://example.com/a.png'), /External/);
-  const zip = new JSZip(); zip.file('assets/test.json', '{"value":42}');
+  const zip = new JSZip(); zip.file('assets/test.json', '{"value":42}'); zip.file('assets/demo.mp4', new Uint8Array([0, 1, 2, 255]));
   const store = new EmbeddedStore(zip);
   assert.deepEqual(await store.json('assets/test.json?version=1'), { value: 42 });
+  const videoUrl = await store.url('assets/demo.mp4');
+  const videoResponse = await fetch(videoUrl);
+  assert.equal(videoResponse.headers.get('content-type'), 'video/mp4');
+  assert.deepEqual(new Uint8Array(await videoResponse.arrayBuffer()), new Uint8Array([0, 1, 2, 255]));
+  URL.revokeObjectURL(videoUrl);
   await assert.rejects(store.url('absent.png'), /decode Blob.*absent.png.*Missing/);
   await assert.rejects(store.json('absent.json'), /Missing/);
 });
@@ -51,23 +65,28 @@ test('load and preload await native resources without changing pack routing or r
   const pre: Pipe = (_task, done) => done();
   const makePipeline = () => ({ pipes: [pre], insert(pipe: Pipe, index: number) { this.pipes.splice(index, 0, pipe); } });
   let handlers!: Parameters<Engine['assetManager']['downloader']['register']>[0];
-  const engine = { assetManager: { pipeline: makePipeline(), fetchPipeline: makePipeline(), preprocessPipe: pre,
-    downloader: { bundleVers: {}, register(value: typeof handlers) { handlers = { ...handlers, ...value }; } } } } as Engine;
-  const store = new EmbeddedStore(new JSZip());
+  const engine = { cclegacy: { internal: { decodeCCONBinary: (bytes: Uint8Array) => ({ decoded: [...bytes] }) } }, assetManager: { pipeline: makePipeline(), fetchPipeline: makePipeline(), preprocessPipe: pre,
+    downloader: { bundleVers: {}, register(value: typeof handlers) { handlers = { ...handlers, ...value }; } } } } as unknown as Engine;
+  const archive = new JSZip(); archive.file('assets/packed.cconb', new Uint8Array([0x43, 0x43, 0x4f, 0x4e]));
+  const store = new EmbeddedStore(archive);
   store.url = async url => 'blob:' + url;
   installEmbeddedAssets(engine, store);
   for (const pipeline of [engine.assetManager.pipeline, engine.assetManager.fetchPipeline]) {
     const task = { input: [
       { url: 'assets/p.png', ext: '.png', isNative: true },
+      { url: 'assets/clip.mp4', ext: '.mp4', isNative: true },
       { url: 'assets/config.json', ext: '.json', isNative: false },
       { url: 'main', ext: 'bundle', isNative: false },
+      { url: 'assets/packed.cconb', ext: '.cconb', isNative: false },
       { url: 'assets/packed.bin', ext: '.bin', isNative: false, info: { packs: ['pack'] } },
     ], output: [] } as Parameters<Pipe>[0];
     await new Promise<void>((resolve, reject) => pipeline.pipes[1](task, error => error ? reject(error) : resolve()));
     assert.equal(task.output, task.input);
-    assert.deepEqual(task.output.map(item => item.url), ['blob:assets/p.png', 'assets/config.json', 'main', 'assets/packed.bin']);
+    assert.deepEqual(task.output.map(item => item.url), ['blob:assets/p.png', 'blob:assets/clip.mp4', 'assets/config.json', 'main', 'assets/packed.cconb', 'assets/packed.bin']);
   }
   assert.equal(typeof handlers.bundle, 'function'); assert.equal(typeof handlers['.json'], 'function');
+  const decodedPack = await new Promise<unknown>((resolve, reject) => handlers['.cconb']('assets/packed.cconb', {}, (error, data) => error ? reject(error) : resolve(data)));
+  assert.deepEqual(decodedPack, { decoded: [0x43, 0x43, 0x4f, 0x4e] });
   let release!: (url: string) => void;
   const slow = new Promise<string>(resolve => { release = resolve; });
   store.url = async url => { if (url === 'slow.png') return slow; throw new Error('Missing: ' + url); };
@@ -83,6 +102,21 @@ test('load and preload await native resources without changing pack routing or r
   const task = { input: [{ url: 'absent.png', ext: '.png', isNative: true }], output: [] };
   store.url = async url => { throw new Error('Missing: ' + url); };
   await assert.rejects(new Promise<void>((resolve, reject) => engine.assetManager.pipeline.pipes[1](task, error => error ? reject(error) : resolve())), /prepare assets.*absent.png/);
+});
+
+test('CCONB decoder exceptions reach the downloader callback', async () => {
+  const { installEmbeddedAssets } = await import('../runtime/embedded/engine');
+  type Engine = import('../runtime/embedded/engine').EmbeddedEngine;
+  const pre: Engine['assetManager']['preprocessPipe'] = (_task, done) => done();
+  let handlers!: Parameters<Engine['assetManager']['downloader']['register']>[0];
+  const pipeline = () => ({ pipes: [pre], insert() {} });
+  const engine = { cclegacy: { internal: { decodeCCONBinary() { throw new Error('invalid CCON header'); } } },
+    assetManager: { pipeline: pipeline(), fetchPipeline: pipeline(), preprocessPipe: pre,
+      downloader: { bundleVers: {}, register(value: typeof handlers) { handlers = { ...handlers, ...value }; } } },
+  } as unknown as Engine;
+  const archive = new JSZip(); archive.file('assets/bad.cconb', new Uint8Array([0]));
+  installEmbeddedAssets(engine, new EmbeddedStore(archive));
+  await assert.rejects(new Promise((resolve, reject) => handlers['.cconb']('assets/bad.cconb', {}, (error, data) => error ? reject(error) : resolve(data))), /load CCONB.*invalid CCON header/);
 });
 
 test('embedded files decode lazily, concurrent consumers share work, JSON mutation stays local', async t => {
@@ -143,8 +177,8 @@ test('compiled build hook shares ZIP packaging, preserves SDK, and isolates form
   assert.throws(() => readOptions({ packages: { playable: { outputFormat: 'bad' as never } } }), /Unsupported outputFormat/);
   await assert.rejects(packageBuild(root, 'tiktok', { outputFormat: 'bad' as never }), /Unsupported outputFormat/);
   assert.ok(fs.existsSync(report.archive));
-  fs.writeFileSync(path.join(root, 'assets/unsupported.wasm'), '');
-  await assert.rejects(packageBuild(root, 'tiktok', { outputFormat: 'single-html' }), /does not yet support/);
+  fs.writeFileSync(path.join(root, 'style.css'), '@import "other.css";');
+  await assert.rejects(packageBuild(root, 'tiktok', { outputFormat: 'single-html' }), /CSS @import/);
   assert.equal(fs.existsSync(report.archive), false);
   assert.equal(JSON.parse(fs.readFileSync(root + '-delivery/single-html.report.json', 'utf8')).status, 'failed');
   assert.deepEqual(fs.readFileSync(zip.archive), previousZip);

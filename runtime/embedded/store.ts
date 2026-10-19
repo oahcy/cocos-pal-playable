@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 export const VIRTUAL_ROOT = 'https://playable.invalid/';
-const mime: Record<string, string> = { js: 'application/javascript', json: 'application/json', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4', ttf: 'font/ttf', woff: 'font/woff', woff2: 'font/woff2' };
+const mime: Record<string, string> = { js: 'application/javascript', mjs: 'application/javascript', json: 'application/json', wasm: 'application/wasm', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', avif: 'image/avif', gif: 'image/gif', bmp: 'image/bmp', svg: 'image/svg+xml', pvr: 'application/octet-stream', pkm: 'application/octet-stream', astc: 'application/octet-stream', mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', mpg: 'video/mpeg', mpeg: 'video/mpeg', avi: 'video/x-msvideo', m3u8: 'application/vnd.apple.mpegurl', ttf: 'font/ttf', otf: 'font/otf', ttc: 'font/collection', eot: 'application/vnd.ms-fontobject', woff: 'font/woff', woff2: 'font/woff2' };
 export function resourceName(value: string): string {
   const url = new URL(value, VIRTUAL_ROOT);
   if (url.origin !== new URL(VIRTUAL_ROOT).origin) throw new Error('External embedded resource: ' + value);
@@ -57,6 +57,12 @@ export class EmbeddedStore {
       // Cocos parsers may mutate JSON. Cache decoded text, never the shared parsed object.
       return JSON.parse(await pending) as T;
     } catch (error) { throw resourceError('read JSON', value, error); }
+  }
+  async arrayBuffer(value: string): Promise<ArrayBuffer> {
+    try {
+      const name = resourceName(value);
+      return await this.file(name).async('arraybuffer');
+    } catch (error) { throw resourceError('read binary', value, error); }
   }
   async script(value: string): Promise<void> {
     try {

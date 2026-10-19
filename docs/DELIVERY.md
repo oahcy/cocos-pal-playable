@@ -37,6 +37,8 @@ CLI 从 packages.playable 读取以下参数；Creator 面板传入同一组参�
 
 输出在构建目录旁的 <目录>-delivery/，含广告包、报告和所有权标记。默认 TikTok 输出 tiktok.zip，Google 输出 google-ads.zip；报告记录体积、SHA-256、图片处理和待验项。上传广告包，不上传报告；构建失败不可沿用旧包。
 
+体积超限只打印错误日志，不中断构建，仍输出产物及哈希。报告保持 status=packaged，同时设置 sizeLimitExceeded=true 和 sizeLimitError；这表示包已生成但不满足大小限制。资源缺失、非法引用、编码或写入失败仍会阻止打包。
+
 TikTok 单 HTML 输出 tiktok.experimental.html 和 single-html.report.json，与 ZIP 互不覆盖。它只用于格式验证，不表示 TikTok 接受此投放格式；报告标记 channelDefaultFormat=false，并保守沿用渠道大小上限。Google 当前只支持 ZIP。
 
 已有试玩构建目录可重新封装为 HTML：
@@ -61,9 +63,9 @@ CLI 插件携带 sharp；Creator 从编辑器目录加载宿主版本。关闭�
 
 游戏文件以 ZIP 配合 Base64 或 Base122 内嵌；Base122 只减少编码膨胀，不改变画质。页面保留相同的渠道 SDK 引用和运行时，SDK 仍按渠道规则外链加载。
 
-资源按需解压，并发请求复用解压任务和 Blob URL；SystemJS 保留原模块地址解析依赖。资源准备接在 load/preload 的 preprocess 之后，沿用引擎解码器；Bundle、合并 JSON、字体和插件脚本通过适配入口读取。不替换全局 XMLHttpRequest/fetch。
+资源按需解压，并发请求复用解压任务和 Blob URL；SystemJS 保留原模块地址解析依赖。资源准备接在 load/preload 的 preprocess 之后，沿用引擎解码器；Bundle、合并 JSON、CCONB 二进制包、字体和插件脚本通过适配入口读取。不修改引擎源码或 XMLHttpRequest；单 HTML 包装 fetch，只将保留域名 `https://playable.invalid/` 的 GET 请求转到内嵌 Blob，其余请求原样交给浏览器。这样覆盖绕过 assetManager 的引擎 WASM/二进制加载。
 
-JSON 缓存文本、每次独立解析；Blob 保留至页面销毁，不提前释放音频或字体引用。当前依赖 SystemJS/Application 启动结构，拒绝 WASM、CCONB、视频、scoped import map 和 CSS @import。自定义网络请求不会自动转为内嵌资源，目标移动 WebView 需单独验证。
+JSON 缓存文本、每次独立解析；Blob 保留至页面销毁，不提前释放音频或字体引用。CCONB 保持 Creator 原始二进制数据，由 Creator 导出的 `cclegacy.internal.decodeCCONBinary` 解码。图片、音频、WASM、MP4/WebM 等随构建资源进入内嵌 ZIP，运行时沿引擎资源管线解析为 Blob URL，并设置常见格式的 MIME。视频编码能否播放仍取决于目标浏览器/WebView 的解码能力。当前仍拒绝 scoped import map 和 CSS @import；普通相对地址或外部地址的自定义网络请求不会自动映射到内嵌文件，目标移动 WebView 需单独验证。
 
 ## 游戏接口与启动
 

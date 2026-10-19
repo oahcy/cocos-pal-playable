@@ -71,12 +71,19 @@ test('unsupported channels and invalid orientations fail explicitly', () => {
   assert.throws(() => readOptions({ packages: { playable: { orientation: 'bad' } } }), /orientation/);
 });
 
-test('rejects oversized compressed archives', async t => {
+test('retains oversized archives and reports a non-blocking size error', async t => {
   const root = fixture(t);
   fs.mkdirSync(path.join(root, 'assets'));
   fs.writeFileSync(path.join(root, 'assets/random.bin'), randomBytes(5000100));
-  await assert.rejects(packageBuild(root), /must be smaller/);
-  assert.equal(fs.existsSync(path.join(root + '-delivery', 'tiktok.zip')), false);
+  const logged = t.mock.method(console, 'error', () => {});
+  const report = await packageBuild(root);
+  assert.equal(report.status, 'packaged');
+  assert.equal(report.sizeLimitExceeded, true);
+  assert.match(report.sizeLimitError!, /must be smaller/);
+  assert.equal(logged.mock.callCount(), 1);
+  assert.ok(fs.existsSync(report.archive));
+  assert.equal(fs.statSync(report.archive).size, report.bytes);
+  assert.equal(JSON.parse(fs.readFileSync(root + '-delivery/report.json', 'utf8')).sizeLimitExceeded, true);
 });
 test('runtime starts muted, reacts to visibility, and supports unsubscribe', async () => {
   const events: Record<string, () => void> = {};

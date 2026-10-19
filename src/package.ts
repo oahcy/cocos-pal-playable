@@ -43,15 +43,24 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     packageFormat: format, resourceMode: format === 'single-html' ? 'embedded' : 'files', channelDefaultFormat,
     verification: 'local-static-only', pending: [...channel.pending, ...(channelDefaultFormat ? [] : ['Format verification only: not the channel default delivery format; size cap is retained conservatively'])] };
   try {
+    console.log(`[Playable] Collecting delivery files from ${root}.`);
     const originalEntries = collect(root, channel);
+    console.log(`[Playable] Collected ${originalEntries.length} files (${originalEntries.reduce((sum, entry) => sum + entry.data.length, 0)} bytes).`);
     report.pending.push(...(channel.reviewEntries?.(originalEntries) || []));
     validate(originalEntries, channel);
+    console.log(`[Playable] Starting image compression (${settings.imageCompression}, quality ${settings.imageQuality}).`);
     const { entries, report: images } = await compressImages(originalEntries, settings);
+    console.log(`[Playable] Image compression finished; encoding ${format}.`);
     report.images = images;
     const data = await encode(entries);
     report.bytes = data.length;
+    console.log(`[Playable] Encoded ${data.length} bytes; writing artifact.`);
     report.files = entries.map(entry => ({ path: entry.name, bytes: entry.data.length }));
-    if (data.length >= channel.maxBytesExclusive) throw new Error(channel.displayName + ' ' + format + ' must be smaller than ' + channel.maxBytesExclusive + ' bytes; got ' + data.length);
+    report.sizeLimitExceeded = data.length >= channel.maxBytesExclusive;
+    if (report.sizeLimitExceeded) {
+      report.sizeLimitError = channel.displayName + ' ' + format + ' must be smaller than ' + channel.maxBytesExclusive + ' bytes; got ' + data.length;
+      console.error('[Playable] ' + report.sizeLimitError + '. Artifact will be retained; build continues.');
+    }
     fs.writeFileSync(archive, data);
     report.sha256 = crypto.createHash('sha256').update(data).digest('hex');
     report.status = 'packaged';
