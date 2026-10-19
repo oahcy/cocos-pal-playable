@@ -11,10 +11,12 @@ export function selectProfile(host = 'cli', creatorVersion?: string, root = proj
   const id = host === 'cli' ? 'cli' : config.creatorVersions[creatorVersion || ''];
   if (!id || !Object.prototype.hasOwnProperty.call(config.profiles, id)) throw new Error('Creator version is not adapted: ' + creatorVersion);
   const profile = config.profiles[id];
-  // Only executable adapters are enabled. A mapping alone never claims compatibility.
-  const available = host === 'cli' ? profile.adapter === 'cli' && profile.layout === 'cli-platform'
-    : profile.adapter === 'creator-383' && profile.layout === 'creator-extension';
-  if (!available || profile.runtime !== 'systemjs') {
+  const layout = host === 'cli' ? 'cli-platform' : 'creator-extension';
+  // Multiple versions share an adapter; validate entry points instead of hard-coding its name.
+  const safeName = /^[a-z0-9][a-z0-9_-]*$/.test(profile.adapter);
+  const required = host === 'creator' ? ['config.ts', 'hooks.ts', 'sharp.ts'] : ['config.ts', 'hooks.ts'];
+  if (!safeName || profile.layout !== layout || profile.runtime !== 'systemjs'
+    || !required.every(name => fs.existsSync(path.join(root, 'src/adapters', profile.adapter, name)))) {
     throw new Error('Adapter implementation is not available: ' + id);
   }
   return { id, ...profile };

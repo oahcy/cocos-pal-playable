@@ -13,7 +13,7 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
     plugins: profile.layout === 'creator-extension' ? [{
       name: 'creator-node-builtins',
       setup(build) {
-        build.onResolve({ filter: /^sharp$/ }, () => ({ path: path.join(root, 'src/adapters/creator-383/sharp.ts') }));
+        build.onResolve({ filter: /^sharp$/ }, () => ({ path: path.join(root, 'src/adapters', profile.adapter, 'sharp.ts') }));
         build.onResolve({ filter: /^node:/ }, args => {
           const name = args.path.slice(5);
           if (!builtinModules.includes(name)) throw new Error('Unsupported Creator built-in: ' + args.path);

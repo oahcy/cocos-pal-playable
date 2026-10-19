@@ -1,6 +1,6 @@
 # cocos-pack 接入准备
 
-当前工程已提供 CLI 发布和 Creator 3.8.3 实验适配；尚未迁入 cocos-pack。
+当前工程已提供 CLI 发布和 Creator 3.8.3–3.8.4 共用适配；尚未迁入 cocos-pack。
 
 ## 维护与产物边界
 
@@ -9,7 +9,7 @@
 - `src/adapters/cli`：现有 CLI 宿主接口，原发布入口不变。
 - `src/packaging`、`src/package.ts`：广告素材打包核心，与插件自身发布分开。
 - `runtime`：渠道运行时和当前 SystemJS 启动、内嵌资源加载。
-- `compatibility.json`：适配方案；包含 Node 22 的 CLI 配置和 Creator 3.8.3 实验配置（Node 16.14 语法目标）；未映射版本仍会失败。
+- `compatibility.json`：适配方案；包含 Node 22 的 CLI 配置和 Creator 3.8.3–3.8.4 共用配置（Node 16.14 语法目标）；未映射版本仍会失败。
 - `scripts/release`：配置选择、编译、依赖收集、文件清单、ZIP 组装和校验。
 
 现有 `npm run build` 仍输出本地 `dist` 和 `i18n/*.js`，供开发、测试和旧 `install:cli` 使用。
@@ -61,6 +61,6 @@ npm run install:cli -- D:/code/cocos-cli .local/plugin-cli-001
 4. 生成对应 `v<version>/playable/`，根仓库发布调度调用组装函数，输出 `CocosPack/v<version>-playable.zip`。
 5. 如需主包白名单或旧按钮接口补丁，单独管理前置补丁，并验证实际加载路径/版本。
 
-版本范围筛选、批量生成、自动升级版本号和 2.x modify 安装布局留待后续。Creator 插件清单已用于 3.8.3 实验适配。
+版本范围筛选、批量生成、自动升级版本号和 2.x modify 安装布局留待后续。Creator 插件清单已用于 3.8.3、3.8.4。
 2.x 不写入现有同名版本 ZIP；需要与 cocos-pack 的安装流程先确定合并规则。
-当前增加了 Creator 3.8.3 实验入口，参阅 [适配说明](creator-383.md)。不扩大兼容区间，不修改引擎/CLI 主体。
+当前提供 Creator 3.8.3–3.8.4 共用入口，参阅 [适配说明](creator-383_384.md)。后续接口兼容的版本复用同一个 profile；接口变化时才增加适配目录及 profile。打包核心保持共用。

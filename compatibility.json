@@ -10,8 +10,8 @@
         "sharp"
       ]
     },
-    "creator-383": {
-      "adapter": "creator-383",
+    "creator-383_384": {
+      "adapter": "creator-383_384",
       "nodeTarget": "node16.14",
       "runtime": "systemjs",
       "layout": "creator-extension",
@@ -21,6 +21,7 @@
     }
   },
   "creatorVersions": {
-    "3.8.3": "creator-383"
+    "3.8.3": "creator-383_384",
+    "3.8.4": "creator-383_384"
   }
 }

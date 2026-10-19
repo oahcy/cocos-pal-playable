@@ -1,13 +1,15 @@
-# Creator 3.8.3 实验适配
+# Creator 3.8.3–3.8.4 共用适配
 
 当前采用独立构建插件：在 Web Mobile 构建面板中启用试玩打包，不注册新平台，不依赖平台白名单，不修改 Creator、引擎或 CLI 主体。
 
 ## 生成和安装
 
 ```powershell
-npm run plugin -- generate --host=creator --creator-version=3.8.3 --out=.local/creator-383
-npm run plugin -- pack --input=.local/creator-383 --out=.local/releases/3.8.3-playable.zip
+npm run plugin -- generate --host=creator --creator-version=3.8.4 --out=.local/creator-383_384
+npm run plugin -- pack --input=.local/creator-383_384 --out=.local/releases/3.8.3-3.8.4-playable.zip
 ```
+
+将 `--creator-version` 换成 `3.8.3` 会选中同一组源码，生成相同插件内容。目录名用于标识兼容组，实际版本选择以 `compatibility.json` 为准，不根据目录名自动放开整个区间。
 
 将生成目录复制到项目的 `extensions/playable/`，或在 Creator 扩展管理器中安装生成的插件 ZIP，启用后重新打开构建面板。插件清单使用 Creator 的 `package_version: 2` 和 `contributions.builder`。
 
@@ -20,10 +22,10 @@ npm run plugin -- pack --input=.local/creator-383 --out=.local/releases/3.8.3-pl
 
 ## 代码边界
 
-- `src/adapters/creator-383/config.ts`：Creator 构建面板配置。
-- `src/adapters/creator-383/hooks.ts`：读取插件参数、使用最终路径与 Build.Utils.transformCode，转换为共享模板和打包核心输入。
+- `src/adapters/creator-383_384/config.ts`：Creator 构建面板配置。
+- `src/adapters/creator-383_384/hooks.ts`：读取插件参数、使用最终路径与 Build.Utils.transformCode，转换为共享模板和打包核心输入。
 - `src/template.ts`、`src/package.ts`、`src/packaging/`：与 CLI 复用，不复制。
-- `compatibility.json`：只开放精确的 3.8.3 实验配置；其他版本需独立验证。
+- `compatibility.json`：3.8.3、3.8.4 精确映射到同一个 `creator-383_384` 适配组；其他版本需验证后加入映射。
 
 发布 JavaScript 语法目标为 Node 16.14；Creator 版不携带 sharp，由适配层从 Editor.App.path/node_modules/sharp 加载宿主版本；CLI 仍携带自身依赖。构建目标不是实际宿主兼容证明，历史版本仍需分别验证。
 
