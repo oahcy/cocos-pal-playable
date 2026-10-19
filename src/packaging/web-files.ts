@@ -1,15 +1,27 @@
 import type { Entry, Channel } from '../types';
 import fs from 'node:fs';
 import path from 'node:path';
+// Only these build directories and known entry files belong to the delivery package.
 const roots = new Set(['assets', 'cocos-js', 'src']);
+// Optional hexadecimal suffixes cover names such as index.a1b2.js and style.1234.css.
 const rootFile = /^(?:index(?:\.[\da-f]+)?\.js|application(?:\.[\da-f]+)?\.js|style(?:\.[\da-f]+)?\.css|index\.html|playable-runtime\.js)$/i;
+// A local-only reference cannot be a scheme, absolute path, or fragment.
+const nonLocalReference = /^(?:[a-z][a-z\d+.-]*:|[\\/#])/i;
+const selfContainedReference = /^(?:data:|blob:|#)/i;
+// External URLs and root-relative paths cannot be resolved within the package.
+const absoluteReference = /^(?:[a-z][a-z\d+.-]*:|\/\/|\/)/i;
+// Static references in generated HTML/CSS only; these are not general-purpose parsers.
+const htmlReference = /\b(?:src|href)\s*=\s*["']([^"']+)["']/gi;
+const cssReference = /url\(\s*["']?([^"')\s]+)["']?\s*\)/gi;
+
 function collect(root: string, channel: Channel) {
   const entries: Entry[] = [];
   function walk(directory: string, prefix: string) {
     for (const item of fs.readdirSync(directory, { withFileTypes: true })) {
       const name = prefix + item.name;
       if (item.isSymbolicLink()) throw new Error('Symlinks are not allowed: ' + name);
-      if (!prefix && !roots.has(item.name) && !rootFile.test(item.name) && !channel.extraRootFiles.includes(item.name)) continue;
+      const allowedAtRoot = roots.has(item.name) || rootFile.test(item.name) || channel.extraRootFiles.includes(item.name);
+      if (!prefix && !allowedAtRoot) continue;
       if (item.isDirectory()) walk(path.join(directory, item.name), name + '/');
       else if (item.isFile() && !/\.map$/i.test(name) && !item.name.startsWith('.')) {
         entries.push({ name, data: fs.readFileSync(path.join(directory, item.name)) });
@@ -26,27 +38,34 @@ function validate(entries: Entry[], channel: Channel) {
   }
   channel.validate(entries);
   function reference(from: string, value: string, base = path.posix.dirname(from), localOnly = false) {
-    if (localOnly && (!value || /^(?:[a-z][a-z\d+.-]*:|[\\/#])/i.test(value))) {
+    if (localOnly && (!value || nonLocalReference.test(value))) {
       throw new Error('Invalid local reference in ' + from + ': ' + value);
     }
-    if (!value || /^(?:data:|blob:|#)/i.test(value)) return;
+    if (!value || selfContainedReference.test(value)) return;
     if (channel.allowsReference(from, value)) return;
-    if (/^(?:[a-z][a-z\d+.-]*:|\/\/|\/)/i.test(value)) throw new Error('External or absolute reference in ' + from + ': ' + value);
-    const decoded = decodeURIComponent(value.split(/[?#]/)[0]);
+    if (absoluteReference.test(value)) throw new Error('External or absolute reference in ' + from + ': ' + value);
+    // Queries/hashes select the same file. Decode before normalizing to catch encoded ../ paths.
+    const pathname = value.split(/[?#]/)[0];
+    const decoded = decodeURIComponent(pathname);
     const resolved = path.posix.normalize(path.posix.join(base, decoded));
     if (resolved.startsWith('../') || !byName.has(resolved)) throw new Error('Missing or escaping reference in ' + from + ': ' + value);
   }
   for (const entry of entries) {
     const text = /\.(?:html|css|json|js)$/i.test(entry.name) ? entry.data.toString() : '';
     if (/\.html$/i.test(entry.name)) {
-      for (const match of text.matchAll(/\b(?:src|href)\s*=\s*["']([^"']+)["']/gi)) reference(entry.name, match[1]);
+      for (const match of text.matchAll(htmlReference)) {
+        reference(entry.name, match[1]);
+      }
     }
     if (/\.css$/i.test(entry.name)) {
-      for (const match of text.matchAll(/url\(\s*["']?([^"')\s]+)["']?\s*\)/gi)) reference(entry.name, match[1]);
+      for (const match of text.matchAll(cssReference)) {
+        reference(entry.name, match[1]);
+      }
     }
     if (/import-map.*\.json$/i.test(entry.name)) {
       const map = JSON.parse(text) as { imports?: Record<string, string>; scopes?: Record<string, Record<string, string>> };
-      for (const values of [map.imports || {}, ...Object.values(map.scopes || {})]) {
+      const mappings = [map.imports || {}, ...Object.values(map.scopes || {})];
+      for (const values of mappings) {
         for (const value of Object.values(values)) reference(entry.name, value);
       }
     }
@@ -66,10 +85,13 @@ function validate(entries: Entry[], channel: Channel) {
         bundles.set(bundle, version || settings.assets?.bundleVers?.[bundle]);
       }
       for (const [bundle, version] of bundles) {
+        // A bundle is a directory name, not a URL, path or query.
         if (!/^[^/\\?#:]+$/.test(bundle) || bundle === '.' || bundle === '..') {
           throw new Error('Invalid local bundle in ' + entry.name + ': ' + bundle);
         }
-        for (const file of ['config.' + (version ? version + '.' : '') + 'json', 'index.' + (version ? version + '.' : '') + 'js']) {
+        const versionSuffix = version ? '.' + version : '';
+        const bundleFiles = ['config' + versionSuffix + '.json', 'index' + versionSuffix + '.js'];
+        for (const file of bundleFiles) {
           reference(entry.name + ' bundle ' + bundle, 'assets/' + bundle + '/' + file, '', true);
         }
       }

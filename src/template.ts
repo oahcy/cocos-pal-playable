@@ -18,7 +18,12 @@ export type CompileBootstrap = (source: string) => Promise<string | undefined>;
 /** Returns files without reading host options or mutating a host build result. */
 export async function renderPlayableTemplate(input: TemplateInput, channel: Channel, compile: CompileBootstrap,
   resources: PackagingResources = defaultResources): Promise<Entry[]> {
-  const url = (target: string) => './' + path.relative(input.root, target).split(path.sep).map(encodeURIComponent).join('/');
+  const url = (target: string) => {
+    const relativePath = path.relative(input.root, target);
+    // Encode each filename separately so spaces/# are safe without encoding directory slashes.
+    const encodedSegments = relativePath.split(path.sep).map(encodeURIComponent);
+    return './' + encodedSegments.join('/');
+  };
   const bootstrap = await Ejs.renderFile(path.join(resources.templates, 'index.ts.ejs'), {
     applicationURL: JSON.stringify(url(input.applicationJS)),
   });

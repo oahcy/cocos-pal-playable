@@ -37,17 +37,26 @@ export function installEmbeddedAssets(engine: EmbeddedEngine, store: EmbeddedSto
   // Packed JSON requests bypass transformPipeline, so handle them explicitly.
   downloader.register({
     '.cconb': (url, _options, done) => {
-      if (!decodeCCONBinary) { done(new Error('[Playable embedded] Creator CCON decoder is unavailable')); return; }
+      if (!decodeCCONBinary) {
+        done(new Error('[Playable embedded] Creator CCON decoder is unavailable'));
+        return;
+      }
       store.arrayBuffer(url).then(data => decodeCCONBinary(new Uint8Array(data)))
         .then(data => done(null, data), error => done(resourceError('load CCONB', url, error)));
     },
-    '.json': (url, _options, done) => { store.json(url).then(data => done(null, data), error => done(error)); },
+    '.json': (url, _options, done) => {
+      store.json(url).then(data => done(null, data), error => done(error));
+    },
     bundle: (nameOrURL, options, done) => {
-      const name = nameOrURL.replace(/\/$/, '').split('/').pop()!;
+      // Accept a bundle name ('main') or directory URL ('assets/main/').
+      const withoutTrailingSlash = nameOrURL.replace(/\/$/, '');
+      const name = withoutTrailingSlash.split('/').pop()!;
       const base = nameOrURL.includes('/') ? nameOrURL : 'assets/' + name;
       const version = options.version || downloader.bundleVers[name];
       const suffix = version ? '.' + version : '';
-      Promise.all([store.json<Record<string, unknown>>(base + '/config' + suffix + '.json'), store.script(base + '/index' + suffix + '.js')])
+      const configPath = base + '/config' + suffix + '.json';
+      const scriptPath = base + '/index' + suffix + '.js';
+      Promise.all([store.json<Record<string, unknown>>(configPath), store.script(scriptPath)])
         .then(([config]) => done(null, { ...config, base: base + '/' }), error => done(error));
     },
   });
@@ -55,14 +64,28 @@ export function installEmbeddedAssets(engine: EmbeddedEngine, store: EmbeddedSto
   // before the engine downloads/parses them. Keep UUIDs, types and cache keys intact.
   const prepare: Pipe = (task, done) => {
     task.output = task.input;
-    void Promise.allSettled(task.input.map(async item => {
-      if (fontExtensions.has(item.ext) || item.ext === 'bundle' || item.ext === '.json' || item.ext === '.cconb' || (!item.isNative && item.info?.packs)) return;
-      return { item, url: await store.url(item.url) };
-    })).then(results => {
+    const preparedResources = task.input.map(async item => {
+      // These custom handlers expect the original ZIP path, not a Blob URL.
+      const usesCustomDownloader = fontExtensions.has(item.ext)
+        || item.ext === 'bundle' || item.ext === '.json' || item.ext === '.cconb';
+      // Packed assets are fetched by the pack manager, not by their individual UUID URL.
+      const isPackedAsset = !item.isNative && item.info?.packs;
+      if (usesCustomDownloader || isPackedAsset) return;
+      const url = await store.url(item.url);
+      return { item, url };
+    });
+    void Promise.allSettled(preparedResources).then(results => {
       const failed = results.find(result => result.status === 'rejected');
-      if (failed?.status === 'rejected') { done(resourceError('prepare assets', 'load/preload', failed.reason)); return; }
+      if (failed?.status === 'rejected') {
+        done(resourceError('prepare assets', 'load/preload', failed.reason));
+        return;
+      }
       // Finish all reads before releasing a failed task; Cocos may recycle its items.
-      for (const result of results) if (result.status === 'fulfilled' && result.value) result.value.item.url = result.value.url;
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          result.value.item.url = result.value.url;
+        }
+      }
       done();
     });
   };

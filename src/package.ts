@@ -34,7 +34,11 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     fs.mkdirSync(delivery);
     fs.writeFileSync(marker, JSON.stringify({ source: root }));
   }
-  const archive = path.join(delivery, channelDefaultFormat ? channel.archiveName : channel.id + '.experimental.' + (format === 'single-html' ? 'html' : 'zip'));
+  const extension = format === 'single-html' ? 'html' : 'zip';
+  const archiveName = channelDefaultFormat
+    ? channel.archiveName
+    : channel.id + '.experimental.' + extension;
+  const archive = path.join(delivery, archiveName);
   const reportFile = path.join(delivery, channelDefaultFormat ? 'report.json' : format + '.report.json');
   // Invalidate only this plugin's prior output before validating a replacement.
   if (fs.existsSync(archive)) fs.unlinkSync(archive);
@@ -45,7 +49,8 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
   try {
     console.log(`[Playable] Collecting delivery files from ${root}.`);
     const originalEntries = collect(root, channel);
-    console.log(`[Playable] Collected ${originalEntries.length} files (${originalEntries.reduce((sum, entry) => sum + entry.data.length, 0)} bytes).`);
+    const originalBytes = originalEntries.reduce((sum, entry) => sum + entry.data.length, 0);
+    console.log(`[Playable] Collected ${originalEntries.length} files (${originalBytes} bytes).`);
     report.pending.push(...(channel.reviewEntries?.(originalEntries) || []));
     validate(originalEntries, channel);
     console.log(`[Playable] Starting image compression (${settings.imageCompression}, quality ${settings.imageQuality}).`);

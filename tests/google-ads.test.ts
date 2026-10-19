@@ -52,6 +52,9 @@ test('Google refuses malformed HTML, missing orientation and wrong SDK placement
     [html.replace('<!DOCTYPE html>', ''), /DOCTYPE/],
     [html.replace('<meta name="ad.orientation" content="portrait,landscape">', ''), /orientation/],
     [html.replace(channel.sdkURL, 'https://example.com/sdk.js'), /Exit API/],
+    [html.replace('<script src="' + channel.sdkURL, '<script async src="' + channel.sdkURL), /Exit API/],
+    [html.replace('<script src="' + channel.sdkURL, '<script defer src="' + channel.sdkURL), /Exit API/],
+    [html.replace('</head>', '<script src="' + channel.sdkURL + '"></script></head>'), /Exit API/],
     [html.replace('<script src="' + channel.sdkURL + '"></script>', '').replace('</head>', '</head><script src="' + channel.sdkURL + '"></script>'), /Exit API/],
   ] as const) {
     fs.writeFileSync(file, broken); await assert.rejects(packageBuild(root, 'google-ads'), error);

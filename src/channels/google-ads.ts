@@ -30,16 +30,32 @@ const channel: Channel = {
   validate(entries) {
     if (entries.length > 512) throw new Error('Google Ads ZIP must contain no more than 512 files');
     const html = entries.find(entry => entry.name === 'index.html')?.data.toString() || '';
-    if (!/^\s*<!doctype\s+html\s*>/i.test(html) || !/<html\b/i.test(html) || !/<body\b/i.test(html) || !/<\/html\s*>/i.test(html) || !/<\/body\s*>/i.test(html)) {
+    // Require the explicit document structure expected by the upload validator.
+    const hasDocumentTags = /^\s*<!doctype\s+html\s*>/i.test(html)
+      && /<html\b/i.test(html)
+      && /<body\b/i.test(html)
+      && /<\/html\s*>/i.test(html)
+      && /<\/body\s*>/i.test(html);
+    if (!hasDocumentTags) {
       throw new Error('Google Ads requires DOCTYPE html and explicit html/body tags');
     }
     const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head\s*>/i)?.[1] || '';
-    const orientation = [...head.matchAll(/<meta\b[^>]*>/gi)].filter(match => /\bname\s*=\s*["']ad\.orientation["']/i.test(match[0]));
-    if (orientation.length !== 1 || !/\bcontent\s*=\s*["'](?:portrait|landscape|portrait,landscape)["']/i.test(orientation[0][0])) {
+    const metaTags = [...head.matchAll(/<meta\b[^>]*>/gi)];
+    const orientation = metaTags.filter(match => /\bname\s*=\s*["']ad\.orientation["']/i.test(match[0]));
+    const hasValidOrientation = orientation.length === 1
+      && /\bcontent\s*=\s*["'](?:portrait|landscape|portrait,landscape)["']/i.test(orientation[0][0]);
+    if (!hasValidOrientation) {
       throw new Error('Google Ads requires one valid ad.orientation meta tag in head');
     }
-    const sdk = [...head.matchAll(/<script\b[^>]*>/gi)].filter(match => match[0].includes(SDK_URL));
-    if (sdk.length !== 1 || !new RegExp('\\bsrc\\s*=\\s*["\\\']' + SDK_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '["\\\']').test(sdk[0][0]) || /\b(?:async|defer)\b/i.test(sdk[0][0])) {
+    const scriptTags = [...head.matchAll(/<script\b[^>]*>/gi)];
+    const sdk = scriptTags.filter(match => match[0].includes(SDK_URL));
+    // Escape URL punctuation before matching it literally in a quoted src attribute.
+    const escapedSdkURL = SDK_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const officialSdkSource = new RegExp('\\bsrc\\s*=\\s*["\\\']' + escapedSdkURL + '["\\\']');
+    const hasOneOfficialSdk = sdk.length === 1 && officialSdkSource.test(sdk[0][0]);
+    // ExitApi must exist before our runtime starts; async/defer would break that order.
+    const loadsAsynchronously = sdk.length === 1 && /\b(?:async|defer)\b/i.test(sdk[0][0]);
+    if (!hasOneOfficialSdk || loadsAsynchronously) {
       throw new Error('Google Ads requires the blocking official Exit API script in head');
     }
     if (html.indexOf(SDK_URL) > html.indexOf('src="./playable-runtime.js"')) throw new Error('SDK must load before runtime');

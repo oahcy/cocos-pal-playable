@@ -42,22 +42,32 @@ async function boot(): Promise<void> {
     } catch (error) { throw resourceError('instantiate module', url + (parent ? ' from ' + parent : ''), error); }
   };
   const map = document.createElement('script');
-  map.type = 'systemjs-importmap'; map.textContent = JSON.stringify(manifest.importMap); document.head.appendChild(map);
+  map.type = 'systemjs-importmap';
+  map.textContent = JSON.stringify(manifest.importMap);
+  document.head.appendChild(map);
   // The page installs the same channel runtime used by the ZIP build.
   if (typeof window.__startPlayable !== 'function') throw new Error('Channel runtime is missing');
   const start = window.__startPlayable;
   const settings = await store.json<{ plugins?: { jsList?: string[] }; rendering?: { effectSettingsPath?: string } }>(manifest.settings);
   const scripts = settings.plugins?.jsList || [];
+  // Load plugin scripts ourselves from the archive at the same engine startup stage.
   if (settings.plugins) settings.plugins.jsList = [];
-  if (settings.rendering?.effectSettingsPath) settings.rendering.effectSettingsPath = await store.url(settings.rendering.effectSettingsPath);
-  const settingsURL = URL.createObjectURL(new Blob([JSON.stringify(settings)], { type: 'application/json' }));
+  if (settings.rendering?.effectSettingsPath) {
+    settings.rendering.effectSettingsPath = await store.url(settings.rendering.effectSettingsPath);
+  }
+  const settingsBlob = new Blob([JSON.stringify(settings)], { type: 'application/json' });
+  const settingsURL = URL.createObjectURL(settingsBlob);
   window.__startPlayable = (application, loadEngine) => {
     if (!('settingsPath' in application)) throw new Error('Unsupported Application: settingsPath is missing');
     application.settingsPath = settingsURL;
     return start(application, async () => {
       const engine = await loadEngine() as EmbeddedEngine & { game: { onPreProjectInitDelegate: { add(callback: () => Promise<void>): void } } };
       installEmbeddedAssets(engine, store);
-      engine.game.onPreProjectInitDelegate.add(async () => { for (const file of scripts) await store.script('src/' + file); });
+      engine.game.onPreProjectInitDelegate.add(async () => {
+        for (const file of scripts) {
+          await store.script('src/' + file);
+        }
+      });
       return engine;
     });
   };
