@@ -1,6 +1,6 @@
 # 试玩配置与交付
 
-CLI 安装见 [README](../README.md)，Creator 操作见 [Creator 3.8.3–3.8.4](creator-383_384.md)，Google 的专用规则见 [Google Ads](google-ads.md)。
+CLI 安装见 [README](../README.md)，Creator 操作见 [Creator 3.8.3–3.8.5](creator-383_385.md)，Google 的专用规则见 [Google Ads](google-ads.md)。
 
 ## 构建配置
 

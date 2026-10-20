@@ -11,9 +11,10 @@ import { verifyFiles, readFiles } from '../scripts/release/files';
 test('unsupported Creator targets fail without generating a package', () => {
   assert.equal(selectProfile().adapter, 'cli');
   assert.throws(() => selectProfile('creator', '3.8.2'), /not adapted/);
-  assert.throws(() => selectProfile('creator', '3.8.5'), /not adapted/);
+  assert.throws(() => selectProfile('creator', '3.8.6'), /not adapted/);
   assert.deepEqual(selectProfile('creator', '3.8.3'), selectProfile('creator', '3.8.4'));
-  assert.equal(selectProfile('creator', '3.8.4').adapter, 'creator-383_384');
+  assert.deepEqual(selectProfile('creator', '3.8.3'), selectProfile('creator', '3.8.5'));
+  assert.equal(selectProfile('creator', '3.8.4').adapter, 'creator-383_385');
   assert.throws(() => selectProfile('other'), /Unsupported host/);
 });
 test('standalone plugin carries native dependencies, validates hashes and backs up releases', async t => {

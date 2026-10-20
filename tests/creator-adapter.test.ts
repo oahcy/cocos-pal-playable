@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { generatePlugin } from '../scripts/release/generate';
 import { verifyFiles, readFiles } from '../scripts/release/files';
-import { onBeforeBuild, onAfterBuild } from '../src/adapters/creator-383_384/hooks';
+import { onBeforeBuild, onAfterBuild } from '../src/adapters/creator-383_385/hooks';
 
 test('Creator disabled option leaves ordinary Web builds alone', async () => {
   onBeforeBuild({ platform: 'web-mobile', sourceMaps: true, server: 'https://example.com' });
@@ -25,10 +25,12 @@ test('standalone Creator extension maps final paths and packages ZIP and HTML th
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const plugin = path.join(root, 'plugin');
   await generatePlugin(plugin, 'creator', '3.8.3');
-  assert.equal(verifyFiles(readFiles(plugin)).profile, 'creator-383_384');
-  const sibling = path.join(root, 'plugin-384');
-  await generatePlugin(sibling, 'creator', '3.8.4');
-  assert.deepEqual(readFiles(sibling), readFiles(plugin), '3.8.3 and 3.8.4 must produce the same shared plugin');
+  assert.equal(verifyFiles(readFiles(plugin)).profile, 'creator-383_385');
+  for (const version of ['3.8.4', '3.8.5']) {
+    const sibling = path.join(root, 'plugin-' + version);
+    await generatePlugin(sibling, 'creator', version);
+    assert.deepEqual(readFiles(sibling), readFiles(plugin), version + ' must produce the same shared plugin as 3.8.3');
+  }
   const manifest = JSON.parse(fs.readFileSync(path.join(plugin, 'package.json'), 'utf8'));
   assert.equal(manifest.name, 'playable');
   assert.equal(fs.existsSync(path.join(plugin, 'node_modules/sharp')), false);
@@ -48,7 +50,7 @@ test('standalone Creator extension maps final paths and packages ZIP and HTML th
       },
     }, { filename });
     if (name === 'hooks') {
-      const legacy = mod.exports as typeof import('../src/adapters/creator-383_384/hooks');
+      const legacy = mod.exports as typeof import('../src/adapters/creator-383_385/hooks');
       legacy.onBeforeBuild({ platform: 'web-mobile', packages: { playable: { enabled: true, channel: 'tiktok' } } });
       assert.throws(() => legacy.onBeforeBuild({ platform: 'web-mobile', packages: { playable: { enabled: true, channel: 'constructor' } } }), /Unsupported playable channel/);
     }
@@ -56,7 +58,7 @@ test('standalone Creator extension maps final paths and packages ZIP and HTML th
   const config = require(path.join(plugin, manifest.contributions.builder));
   assert.deepEqual(Object.keys(config.configs), ['web-mobile']);
   assert.equal(config.configs['web-mobile'].options.enabled.default, false);
-  const hooks = require(path.join(plugin, 'dist/hooks.cjs')) as typeof import('../src/adapters/creator-383_384/hooks');
+  const hooks = require(path.join(plugin, 'dist/hooks.cjs')) as typeof import('../src/adapters/creator-383_385/hooks');
   const globals = globalThis as unknown as { Build?: unknown };
   const oldBuild = globals.Build;
   const editorGlobals = globalThis as unknown as { Editor?: unknown };

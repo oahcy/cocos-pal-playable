@@ -1,9 +1,11 @@
 # Cocos Playable
 
+源码已迁入 `cocos-pack/playable/`，后续修改在那里维护；本目录保留作迁移前快照。
+
 私有试玩广告打包插件。支持 TikTok ZIP、Google Ads ZIP，以及用于格式验证的单 HTML。源码使用 TypeScript。
 
 - CLI：独立 playable 平台，复用 HTML5 引擎编译与资源构建。
-- Creator 3.8.3–3.8.4：实验构建插件，在 Web Mobile 下启用 Playable；尚未注册独立试玩平台。
+- Creator 3.8.3–3.8.5：实验构建插件，在 Web Mobile 下启用 Playable；尚未注册独立试玩平台。
 - AppLovin、其他 Creator 版本和 pink 专用面板尚未接入。
 
 ## 开发与 CLI 接入
@@ -25,7 +27,7 @@ npm run build 生成 dist/ 与 i18n/*.js；npm test 包含构建。生成文件�
 
 ## Creator 与插件发布
 
-[Creator 3.8.3–3.8.4](docs/creator-383_384.md) 说明安装、面板选项和限制；[插件发布](docs/cocos-pack-integration.md) 说明 generate/pack/verify 及后续 cocos-pack 集成。
+[Creator 3.8.3–3.8.5](docs/creator-383_385.md) 说明安装、面板选项和限制；[插件发布](docs/cocos-pack-integration.md) 说明 generate/pack/verify 及后续 cocos-pack 集成。
 
 Creator 复用编辑器自带 sharp；CLI 独立插件携带自己的依赖。宿主差异集中在适配层，不复制打包核心。
 
