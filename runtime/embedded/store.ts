@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { imageMime } from './image-format';
 export const VIRTUAL_ROOT = 'https://playable.invalid/';
 // Blob MIME is used by media decoders and WebAssembly streaming compilation.
 const mime: Record<string, string> = {
@@ -64,7 +65,8 @@ export class EmbeddedStore {
       if (!pending) {
         pending = this.file(name).async('arraybuffer').then(bytes => {
           const extension = name.split('.').pop()!;
-          const type = mime[extension] || 'application/octet-stream';
+          // Transcoded images retain their asset path, so bytes take precedence over extension.
+          const type = imageMime(new Uint8Array(bytes)) || mime[extension] || 'application/octet-stream';
           const blob = new Blob([bytes], { type });
           const url = URL.createObjectURL(blob);
           this.urls.set(name, url);

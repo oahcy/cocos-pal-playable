@@ -8,10 +8,11 @@ export const options = {
   "directory-zip": "Directory ZIP",
   "single-html": "Single HTML (format verification)",
 
-  "imageCompression": "PNG compression",
+  "imageCompression": "Image compression",
   "imageQuality": "Image quality (1-100)",
   "none": "Disabled",
-  "lossy": "Lossy",
+  "lossy": "PNG+JPEG",
+  "webp": "WebP",
 
   "channel": "Ad channel",
   "orientation": "Orientation",

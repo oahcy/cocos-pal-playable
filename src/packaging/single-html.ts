@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { imageMime } from '../../runtime/embedded/image-format';
 import { encodeArchive, defaultEmbeddedEncoding, readEmbeddedEncoding, type EmbeddedEncoding } from '../../runtime/embedded/embedded-codec';
 import Ejs from 'ejs';
 import encodeDirectoryZip from './directory-zip';
@@ -74,7 +75,7 @@ export async function encodeSingleHTML(
     const data = files.get(name);
     if (url.origin !== new URL(base).origin || !data) throw new Error('Unsupported CSS resource: ' + value);
     const extension = name.split('.').pop()!;
-    const type = cssMimeTypes[extension];
+    const type = imageMime(data) || cssMimeTypes[extension];
     if (!type) throw new Error('Unsupported CSS resource type: ' + name);
     return 'url("data:' + type + ';base64,' + data.toString('base64') + '")';
   });

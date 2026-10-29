@@ -27,7 +27,7 @@ CLI 从 packages.playable 读取以下参数；Creator 面板传入同一组参�
 | channel | tiktok（默认）、google-ads |
 | outputFormat | channel-default（默认）、directory-zip、single-html；受渠道支持范围限制 |
 | orientation | auto（默认）、portrait、landscape |
-| imageCompression | none（默认）、lossy |
+| imageCompression | none（默认）、lossy（PNG 量化、JPEG 重编码）、webp（WebP 有损） |
 | imageQuality | 整数 1–100，默认 80，越高越保真；不是压缩百分比 |
 | embeddedEncoding | base64（默认）、base122；仅单 HTML 生效 |
 
@@ -53,7 +53,7 @@ single-html 命令省略质量参数时保留原图。预览只有显式传入 -
 
 ## 图片压缩
 
-lossy 对普通 8 位 PNG 做调色板量化，保持路径、尺寸与 PNG 格式，但颜色和半透明像素可能近似。质量 100 仍可能有损；需要原图应选 none。动画、高位深 PNG 和其他图片格式保持不变；法线图、数据纹理等像素敏感素材不宜开启。
+lossy 对普通 8 位 PNG 做调色板量化，保持路径、尺寸与 PNG 格式，但颜色和半透明像素可能近似。质量 100 仍可能有损；需要原图应选 none。动画、高位深 PNG、已有 WebP 和其他图片格式保持不变；法线图、数据纹理等像素敏感素材不宜开启。
 
 处理发生在资源收集后、ZIP/HTML 编码前，原素材和中间构建文件不变。只有 PNG 自身及其 DEFLATE 体积都减小时才采用压缩结果，否则保留原文件。报告 images 记录逐图结果，最终包大小见 bytes。
 
@@ -95,3 +95,7 @@ const off = playable.onMuteChange(muted => { /* 更新业务音频 */ });
 TikTok SDK 曾观察到读取 __playable_ready_resources__.json 用于首屏监测；其生成责任和依赖口径尚未确认。当前不生成空清单或整包文件列表来伪造就绪，保留 report.pending。
 
 官方参考：[素材规范](https://ads.tiktok.com/resources/help/article/playable-ads?lang=en)、[创建与测试](https://ads.tiktok.com/resources/help/article/how-to-create-playable-ads-on-tiktok-ads-manager?lang=en)。
+
+`webp` 对 PNG/JPEG 转码为有损 WebP，沿用 imageQuality（1–100），保留透明通道、尺寸与资源路径；实际格式由文件内容识别，因此能处理扩展名为 .jpg 的 PNG。动画、高位深、已有 WebP 保留原样；仅在裸文件和 ZIP 压缩后均变小时替换。单 HTML 的 Blob 和 CSS data URL 根据实际内容生成 MIME。目录 ZIP 保留原扩展名，由浏览器识别图片数据，需在目标广告 WebView 验收；法线图、数据纹理等像素敏感素材不宜开启。
+
+页面的 PNG+JPEG 选项（imageCompression=lossy）也处理 JPEG：按实际内容识别，PNG 做调色板量化，JPEG 按同一 imageQuality 重新编码为 JPEG，保持各自格式、路径和尺寸。PNG 不转成 JPEG，透明图仍保留 PNG；只在裸文件和 ZIP 压缩后均更小时替换。JPEG 再编码仍会产生有损变化，不新增独立 JPEG 选项。

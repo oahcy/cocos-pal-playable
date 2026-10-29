@@ -11,8 +11,8 @@ export const template = `<div>
       <ui-prop name="输出格式"><ui-select v-value="channel.outputFormat"><option value="channel-default">渠道默认</option><option value="directory-zip">ZIP</option><option value="single-html">单 HTML</option></ui-select></ui-prop>
       <ui-prop name="内嵌编码"><ui-select v-value="channel.embeddedEncoding"><option value="base64">Base64</option><option value="base122">Base122</option></ui-select></ui-prop>
       <ui-prop name="方向"><ui-select v-value="channel.orientation"><option value="auto">自适应</option><option value="portrait">竖屏</option><option value="landscape">横屏</option></ui-select></ui-prop>
-      <ui-prop name="PNG 压缩"><ui-select v-value="channel.imageCompression"><option value="none">不压缩</option><option value="lossy">有损</option></ui-select></ui-prop>
-      <ui-prop name="质量 (1-100)"><ui-num-input v-value="channel.imageQuality" min="1" max="100" step="1"></ui-num-input></ui-prop>
+      <ui-prop name="图片压缩"><ui-select v-value="channel.imageCompression"><option value="none">不压缩</option><option value="webp">WebP</option><option value="lossy">PNG+JPEG</option></ui-select></ui-prop>
+      <ui-prop name="质量 (1-100)" v-if="channel.imageCompression !== 'none'"><ui-num-input v-value="channel.imageQuality" min="1" max="100" step="1"></ui-num-input></ui-prop>
       <ui-prop name="商店 HTTPS URL" v-if="id === 'applovin'"><ui-input v-value="channel.storeUrl"></ui-input></ui-prop>
     </div>
   </section>

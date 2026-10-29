@@ -157,3 +157,19 @@ Google Ads：CLI 真实项目构建与静态检查通过；尚未完成平台上
 - 类型检查通过，源码回归 76/76；覆盖 2.x 生成包、双格式交付、下载管线、插件脚本顺序及暂停恢复。
 - Creator 3.7.3 隔离样例实际构建成功：TikTok ZIP 5,418,894 字节，Google Ads ZIP 5,418,528 字节，AppLovin HTML 7,337,532 字节。未压缩，均超限并按约定保留；不代表可投放，也未验证画面。测试借名插件已移除，正式包名称保持 playable。
 - 本机没有 Creator 2.x；其真实 Editor 加载、面板和画面仍待验收。其他历史安装包也未逐个验收，生成与自动回归不等同于全部客户端实测通过。
+
+### 2026-10-29：可选 WebP 有损图片转码
+
+- 新增 imageCompression=webp，沿用 imageQuality；原 none/lossy 配置继续有效。按文件内容识别 PNG/JPEG，保留尺寸、透明通道和资源路径，跳过动画、高位深、已有 WebP，未节省体积时保留原图。
+- 单 HTML 的资源 Blob 和 CSS data URL 按真实图片格式生成 MIME。类型检查通过，全量 79/79 测试通过，覆盖透明度、扩展名不匹配、PNG 旧模式及 MIME。
+- 用 test388/playable-002 的 TikTok ZIP 相同输入测试 quality=80，12 张图从 3,847,514 降至 174,902 字节；ZIP 从 5,578,467 降至 1,971,313 字节，Base122 实验 HTML 为 2,364,769 字节。产物放在 .local/webp-test388-q80，ZIP CRC 通过，未覆盖用户工程、未生成到 cocos-pack。
+- 本轮没有进行广告 WebView、官方预览或游戏画面验收，已安装 Editor 插件尚未更新。
+
+### 2026-10-29：图片模式与实际 Creator 3.8.8 产物检查
+
+- 图片压缩选项顺序为“不压缩 → WebP → PNG+JPEG”；原 lossy 配置值保持，PNG 量化、JPEG 重编码分别保留原格式，WebP 模式将两者转为 WebP。按内容识别格式，质量参数共用。
+- 已更新全局 Creator 3.8.8 测试插件并校验发布文件；未向 cocos-pack 生成产物。
+- 用户实际构建 test388/playable-003：WebP、quality=80，12 张图从 3,847,514 降至 174,902 字节；TikTok ZIP 1,971,319，Google ZIP 1,970,957，AppLovin Base122 HTML 2,364,076 字节。图片尺寸及透明通道一致，两份 ZIP 与 HTML 内嵌 ZIP CRC、报告大小及 SHA-256 通过。
+- 用户实际构建 test388/playable-004：PNG+JPEG、quality=80，12 张图均压缩，输出 9 PNG / 3 JPEG，共 920,756 字节；TikTok ZIP 2,708,963，Google ZIP 2,708,601，AppLovin HTML 3,207,098 字节。报告大小、SHA-256 与两份 ZIP CRC 通过，图片尺寸保持。
+- 上述产物均未超体积限制；本轮未对运行画面、官方容器和有损画质进行验收。
+- 最终类型检查与全量回归 81/81 通过，含 JPEG 重编码及无体积收益时保留原图的测试。

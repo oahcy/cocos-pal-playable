@@ -82,7 +82,7 @@ function render(panel: Panel) {
     if (channel.requiresStoreUrl) field(details, id, 'storeUrl', selected.storeUrl || '');
     field(details, id, 'imageCompression', selected.imageCompression, imageCompressionModes);
     const invalidQuality = !Number.isInteger(selected.imageQuality) || selected.imageQuality < 1 || selected.imageQuality > 100;
-    if (selected.imageCompression === 'lossy' || invalidQuality) field(details, id, 'imageQuality', selected.imageQuality);
+    if (selected.imageCompression !== 'none' || invalidQuality) field(details, id, 'imageQuality', selected.imageQuality);
   }
   const error = validation(options);
   if (error) { const message = document.createElement('p'); message.className = 'error'; message.textContent = error; fieldset.appendChild(message); }
