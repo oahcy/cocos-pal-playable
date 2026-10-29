@@ -2,8 +2,9 @@ import type { Entry, Channel } from '../types';
 import fs from 'node:fs';
 import path from 'node:path';
 // Only these build directories and known entry files belong to the delivery package.
-const roots = new Set(['assets', 'cocos-js', 'src']);
+const roots = new Set(['assets', 'cocos-js', 'src', 'res', 'subpackages']);
 // Optional hexadecimal suffixes cover names such as index.a1b2.js and style.1234.css.
+const creator2RootFile = /^(?:cocos2d-js(?:-min)?\.js|physics(?:-min)?\.js|main\.js|creator2-manifest\.json)$/i;
 const rootFile = /^(?:index(?:\.[\da-f]+)?\.js|application(?:\.[\da-f]+)?\.js|style(?:\.[\da-f]+)?\.css|index\.html|playable-runtime\.js)$/i;
 // A local-only reference cannot be a scheme, absolute path, or fragment.
 const nonLocalReference = /^(?:[a-z][a-z\d+.-]*:|[\\/#])/i;
@@ -20,7 +21,7 @@ function collect(root: string, channel: Channel) {
     for (const item of fs.readdirSync(directory, { withFileTypes: true })) {
       const name = prefix + item.name;
       if (item.isSymbolicLink()) throw new Error('Symlinks are not allowed: ' + name);
-      const allowedAtRoot = roots.has(item.name) || rootFile.test(item.name) || channel.extraRootFiles.includes(item.name);
+      const allowedAtRoot = roots.has(item.name) || rootFile.test(item.name) || creator2RootFile.test(item.name) || channel.extraRootFiles.includes(item.name);
       if (!prefix && !allowedAtRoot) continue;
       if (item.isDirectory()) walk(path.join(directory, item.name), name + '/');
       else if (item.isFile() && !/\.map$/i.test(name) && !item.name.startsWith('.')) {

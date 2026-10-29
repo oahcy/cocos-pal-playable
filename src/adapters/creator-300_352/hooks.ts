@@ -14,7 +14,18 @@ type HostHook = (this: unknown, options: Options, result: CreatorResult, cache: 
 declare const Editor: { App: { path: string }; Module: { requireFile(file: string): { onAfterInit: HostHook; onAfterBuild: HostHook } } };
 function webHooks() {
   // Use the installed version's Web templates and loader, like the openpaas adapter.
-  return Editor.Module.requireFile(path.join(Editor.App.path, 'modules/platform-extensions/extensions/web-mobile/dist/builder/hooks.ccc'));
+  const candidates = [
+    'modules/platform-extensions/extensions/web-mobile/dist/builder/hooks.ccc',
+    'modules/platform-extensions/extensions/web-mobile/dist/builder/hooks.js',
+    'builtin/web-mobile/dist/builder/hooks.ccc',
+    'builtin/web-mobile/dist/builder/hooks.js',
+  ];
+  const errors: string[] = [];
+  for (const relative of candidates) {
+    try { return Editor.Module.requireFile(path.join(Editor.App.path, relative)); }
+    catch (error) { errors.push(relative + ': ' + String(error)); }
+  }
+  throw new Error('Creator Web hooks are unavailable: ' + errors.join('; '));
 }
 function selections(options: CreatorOptions) {
   if (options.platform !== 'playable') throw new Error('Playable platform adapter requires platform=playable');

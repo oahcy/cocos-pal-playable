@@ -57,8 +57,8 @@ test('3.5 release retains playable identity and ships the matching startup proto
   await generatePlugin(plugin, 'creator', '3.5.2');
   const manifest = JSON.parse(fs.readFileSync(path.join(plugin, 'package.json'), 'utf8'));
   assert.equal(manifest.name, 'playable');
-  assert.equal(manifest.editor, '3.5.2');
-  assert.deepEqual(manifest.engines, { creator: '3.5.2' });
+  assert.ok(manifest.editor.split(' || ').includes('3.5.2'));
+  assert.deepEqual(manifest.engines, { creator: manifest.editor });
   assert.equal(manifest.package_version, 2);
   const config = require(path.join(plugin, 'dist/config.cjs'));
   assert.deepEqual(Object.keys(config.configs), ['playable']);
@@ -73,9 +73,9 @@ test('3.5 release retains playable identity and ships the matching startup proto
 test('platform families follow OpenPaaS boundaries without enabling unadapted versions', () => {
   const compatibility = JSON.parse(fs.readFileSync(path.join(__dirname, '../compatibility.json'), 'utf8'));
   assert.deepEqual(compatibility.creatorPlatformGroups.map((group: { name: string }) => group.name),
-    ['300_352', '360_374', '380_382', '383_384', '385_386', '387', '388', '389']);
+    ['232_234', '240_2415', '300_352', '360_374', '380_382', '383_384', '385_386', '387', '388', '389']);
   for (const version of ['3.0.0', '3.5.1', '3.6.0', '3.7.4', '3.8.0', '3.8.2']) {
-    assert.throws(() => selectProfile('creator', version), /not adapted/);
+    assert.ok(selectProfile('creator', version).editor?.split(' || ').includes(version));
   }
   assert.equal(selectProfile('creator', '3.5.2').adapter, 'creator-300_352');
   assert.equal(selectProfile('creator', '3.8.3').id,

@@ -1,0 +1,8 @@
+import * as application from <%- applicationURL %>;
+if (typeof application.Application === 'function') {
+  window.__startPlayable(new application.Application(), () => System.import('cc'));
+} else if (typeof application.createApplication === 'function') {
+  window.__startLegacyPlayable(application.createApplication);
+} else {
+  throw new Error('Unsupported Creator application module');
+}

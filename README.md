@@ -4,9 +4,9 @@
 
 - CLI：独立 playable 平台，复用 HTML5 引擎编译与资源构建。
 - Creator：统一为独立 Playable 平台，不再提供 Web Mobile 附加构建入口。
-- 当前已放开白名单的 Creator 3.8.9 源码版：独立 Playable 平台，支持勾选多渠道并分别配置，一次构建输出多份广告包，见 [接入说明](docs/creator-platform.md)。
-- 历史独立平台：提供 3.8.3–3.8.9 的生成配置；平台白名单由 Creator 侧负责，历史版本仍需对应宿主验证，见同一接入说明。
-- Creator 3.5.2：独立平台适配，使用旧版 Web 模板与启动协议；正式名称仍为 `playable`，需 Editor 放开白名单。其他更早版本和 pink 专用面板尚未接入。
+- Creator 历史发布映射覆盖 OpenPaaS 的 2.3.2～2.3.4、2.4.0～2.4.15、3.0.0～3.8.8 清单版本，并保留原 3.8.9；按宿主/启动协议选择 adapter。
+- 2.x 使用 simple-build-target 继承 Web Mobile 构建，专用面板和启动/资源桥接；3.x 注册独立平台，均不修改宿主引擎或其他平台钩子。宿主仍需允许平台注册。
+- 历史版本产物生成和自动测试不代表每个安装包已完成实机验收。已验证边界与待测版本见 [历史适配](docs/historical-creators.md)；pink 专用面板尚未接入。
 
 ## 开发与 CLI 接入
 
@@ -34,7 +34,7 @@ npm run pack:cocos -- --root=D:/code/cocos-pack --dry-run
 npm run pack:cocos -- --root=D:/code/cocos-pack
 ```
 
-按适配组写入 `playable/playable_352/`、`playable/playable_383_384/`、`playable/playable_385_389/`，并按目标版本生成 `CocosPack/v<版本>-playable.zip`。不要在 cocos-pack 修改生成的插件；需要修复时回到本仓库修改、验证并重新生成。
+按适配组写入 `playable/playable_<适配组>/`，并按目标版本生成 `CocosPack/v<版本>-playable.zip`。不要在 cocos-pack 修改生成的插件；需要修复时回到本仓库修改、验证并重新生成。
 
 [Creator 独立平台](docs/creator-platform.md) 说明安装、面板选项和限制；[插件发布](docs/cocos-pack-integration.md) 说明 generate/pack/verify 和 cocos-pack 根仓库调度。
 

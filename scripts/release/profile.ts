@@ -3,7 +3,7 @@ import path from 'node:path';
 export const projectRoot = path.resolve(__dirname, '../..');
 export interface Profile {
   adapter: string; nodeTarget: string; runtime: string; layout: string; externalDependencies: string[];
-  editorIntegration?: 'playable-platform';
+  editorIntegration?: 'playable-platform' | 'simple-build-target';
   applicationAdapter: string;
   artifactDirectory?: string;
 }
@@ -38,7 +38,7 @@ export function selectProfile(host = 'cli', creatorVersion?: string, root = proj
       compareVersions(creatorVersion!, group.from) >= 0 && compareVersions(creatorVersion!, group.to) <= 0);
     if (groups.length !== 1 || groups[0].profile !== id) throw new Error('Creator platform group mismatch: ' + creatorVersion);
   }
-  const layout = host === 'cli' ? 'cli-platform' : 'creator-extension';
+  const layout = host === 'cli' ? 'cli-platform' : creatorVersion?.startsWith('2.') ? 'creator2-extension' : 'creator-extension';
   const safeName = /^[a-z0-9][a-z0-9_-]*$/.test(profile.adapter);
   const required = host === 'creator' ? ['config.ts', 'hooks.ts', 'sharp.ts'] : ['config.ts', 'hooks.ts'];
   if (!safeName || profile.layout !== layout || profile.runtime !== 'systemjs'

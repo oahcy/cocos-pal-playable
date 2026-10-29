@@ -10,10 +10,11 @@ export const applicationAdapter: ApplicationAdapter = {
     config.debug = false;
   },
   prepareApplication(source) {
-    const marker = "var settings = 'src/settings.json';";
-    // Deliberately match the known host template once, never replace global XHR APIs.
-    // Unknown host templates fail explicitly instead of producing a broken HTML.
-    if (source.split(marker).length !== 2) throw new Error('Unsupported Creator 3.5 application settings template');
+    // Babel versions emit var or let; accept only the known local settings assignment.
+    const assignment = /\b(?:var|let|const)\s+settings\s*=\s*['"]src\/settings(?:\.[a-f0-9]+)?\.json['"]\s*;/g;
+    const matches = [...source.matchAll(assignment)];
+    if (matches.length !== 1) throw new Error('Unsupported Creator factory application settings template');
+    const marker = matches[0][0];
     return source.replace(marker, `if (window.__legacyEmbeddedContext) {
       window._CCSettings = JSON.parse(JSON.stringify(window.__legacyEmbeddedContext.settings));
       return Promise.resolve();

@@ -12,7 +12,7 @@ import { verifyFiles, readFiles } from '../scripts/release/files';
 
 test('unsupported Creator targets fail without generating a package', () => {
   assert.equal(selectProfile().adapter, 'cli');
-  assert.throws(() => selectProfile('creator', '3.8.2'), /not adapted/);
+  assert.throws(() => selectProfile('creator', '3.8.10'), /not adapted/);
   assert.equal(selectProfile('creator', '3.8.6').editorIntegration, 'playable-platform');
   assert.deepEqual(selectProfile('creator', '3.8.3'), selectProfile('creator', '3.8.4'));
   assert.notEqual(selectProfile('creator', '3.8.3').nodeTarget, selectProfile('creator', '3.8.5').nodeTarget);

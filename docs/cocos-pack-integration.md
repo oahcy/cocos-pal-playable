@@ -12,7 +12,7 @@ cocos-pal-playable/src + runtime + scripts
     → Dashboard 下发安装
 ```
 
-同适配 profile 本轮只编译、输出一份共享目录：playable_352、playable_383_384、playable_385_389。各目标版本仍分别生成 ZIP；版本范围目录名不扩大兼容映射。生成包记录逐文件 SHA-256，cocos-pack 中的产物应提交版本管理；CocosPack ZIP 和 .local 备份不提交。禁止手改产物后反向同步。
+同适配 profile 本轮只编译、输出一份共享目录：playable_232_234、playable_240_2415、playable_300_352、playable_360_374、playable_380_382、playable_383_384、playable_385_389。各目标版本仍分别生成 ZIP；版本范围目录名不扩大兼容映射。生成包记录逐文件 SHA-256，cocos-pack 中的产物应提交版本管理；CocosPack ZIP 和 .local 备份不提交。禁止手改产物后反向同步。
 
 ## 从源码仓库生成
 

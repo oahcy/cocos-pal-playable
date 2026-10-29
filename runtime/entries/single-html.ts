@@ -5,7 +5,7 @@ import { EmbeddedStore, VIRTUAL_ROOT, resourceError } from '../embedded/store';
 import { installEmbeddedFetch } from '../embedded/fetch';
 import type {} from '../index';
 import { showStartupError } from '../errors';
-interface Manifest { polyfills?: string; system: string; importMap: { imports: Record<string, string> }; settings: string; entry: string; }
+interface Manifest { kind?: 'creator2'; polyfills?: string; system: string; importMap: { imports: Record<string, string> }; settings: string; entry: string; }
 interface SystemLoader { instantiate(url: string, parent?: string): Promise<unknown>; createScript(url: string): HTMLScriptElement; import(id: string): Promise<unknown>; }
 declare const System: SystemLoader;
 async function boot(): Promise<void> {
@@ -27,6 +27,11 @@ async function boot(): Promise<void> {
   console.info('[Playable embedded] Archive ready.');
   const store = new EmbeddedStore(zip);
   installEmbeddedFetch(window, store, error => showStartupError(document, error));
+  if (manifest.kind === 'creator2') {
+    await prepareEmbedded({ store, settingsPath: '' });
+    await store.script(manifest.entry);
+    return;
+  }
   if (manifest.polyfills) await store.script(manifest.polyfills);
   await store.script(manifest.system);
   const loaderPrototype = Object.getPrototypeOf(System) as SystemLoader;

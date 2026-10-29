@@ -1,3 +1,5 @@
+> 历史版本新增适配和验收边界见 [历史适配](historical-creators.md)。2.x 使用 simple-build-target，不使用下述 3.x 注册协议。
+
 # Creator 独立 Playable 平台
 
 打包核心和渠道逻辑共用；Creator 版本只影响宿主适配、编译目标与 Editor 接入。

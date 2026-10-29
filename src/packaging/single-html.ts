@@ -44,16 +44,25 @@ export async function encodeSingleHTML(
   };
   // Match plain and cache-hashed build files, e.g. system.bundle.js / system.a1b2.bundle.js.
   // Multiple matches are ambiguous: never pick an old entry left by a previous build.
-  const system = requireSingleFile(/^src\/system(?:\.[\da-f]+)?\.bundle\.js$/i);
-  const maps = requireSingleFile(/^src\/import-map(?:\.[\da-f]+)?\.json$/i);
-  const settings = requireSingleFile(/^src\/settings(?:\.[\da-f]+)?\.json$/i);
-  const entry = requireSingleFile(/^index(?:\.[\da-f]+)?\.js$/i);
-  const polyfills = [...files.keys()].find(name => /^src\/polyfills(?:\.[\da-f]+)?\.bundle\.js$/i.test(name));
-  const importMap = JSON.parse(readText(maps)) as { imports: Record<string, string>; scopes?: unknown };
-  if (importMap.scopes) throw new Error('Single HTML prototype does not yet support scoped import maps');
-  const importMapURL = new URL(maps, base);
-  for (const [key, value] of Object.entries(importMap.imports)) {
-    importMap.imports[key] = new URL(value, importMapURL).href;
+  let startupManifest: unknown;
+  if (files.has('creator2-manifest.json')) {
+    const manifest = JSON.parse(readText('creator2-manifest.json'));
+    if (manifest.kind !== 'creator2' || manifest.entry !== 'index.js' || !Array.isArray(manifest.scripts)) throw new Error('Invalid Creator 2 embedded manifest');
+    for (const script of manifest.scripts) readText(script);
+    startupManifest = manifest;
+  } else {
+    const system = requireSingleFile(/^src\/system(?:\.[\da-f]+)?\.bundle\.js$/i);
+    const maps = requireSingleFile(/^src\/import-map(?:\.[\da-f]+)?\.json$/i);
+    const settings = requireSingleFile(/^src\/settings(?:\.[\da-f]+)?\.json$/i);
+    const entry = requireSingleFile(/^index(?:\.[\da-f]+)?\.js$/i);
+    const polyfills = [...files.keys()].find(name => /^src\/polyfills(?:\.[\da-f]+)?\.bundle\.js$/i.test(name));
+    const importMap = JSON.parse(readText(maps)) as { imports: Record<string, string>; scopes?: unknown };
+    if (importMap.scopes) throw new Error('Single HTML prototype does not yet support scoped import maps');
+    const importMapURL = new URL(maps, base);
+    for (const [key, value] of Object.entries(importMap.imports)) {
+      importMap.imports[key] = new URL(value, importMapURL).href;
+    }
+    startupManifest = { system, polyfills, importMap, settings, entry };
   }
   let css = readText(requireSingleFile(/^style(?:\.[\da-f]+)?\.css$/i));
   if (/@import\b/i.test(css)) throw new Error('Single HTML does not support CSS @import');
@@ -82,7 +91,7 @@ export async function encodeSingleHTML(
   console.log(`[Playable] Single HTML: archive encoded (${archive.length} characters); rendering HTML.`);
   // HTML parses closing tags even inside JS strings; escape them before placing code in <script>.
   const escapeScript = (value: string) => value.replace(/<\/script/gi, '<\\/script');
-  const manifest = JSON.stringify({ system, polyfills, importMap, settings, entry }).replace(/</g, '\\u003c');
+  const manifest = JSON.stringify(startupManifest).replace(/</g, '\\u003c');
   const html = await Ejs.renderFile(template, {
     sdkURL,
     channelRuntime: escapeScript(readText('playable-runtime.js')),

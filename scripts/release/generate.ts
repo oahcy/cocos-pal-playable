@@ -17,7 +17,10 @@ export async function generatePlugin(output: string, host = 'cli', creatorVersio
   const source = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   const { name, version, description, license, type, contributes } = source;
   fs.writeFileSync(path.join(output, 'package.json'), JSON.stringify(host === 'creator'
-    ? { name: 'playable', version, description, license, editor: profile.editor, engines: { creator: profile.editor }, package_version: 2, title: 'Playable', contributions: { builder: './dist/config.cjs' } }
+    ? { name: 'playable', version, description, license, editor: profile.editor, engines: { creator: profile.editor }, title: 'Playable',
+      ...(profile.editorIntegration === 'simple-build-target'
+        ? { 'simple-build-target': './dist/config.cjs', profiles: { project: { channels: null } } }
+        : { package_version: 2, contributions: { builder: './dist/config.cjs' } }) }
     : { name, version, description, license, type, contributes }, null, 2));
   copyDependencies(host === 'creator' ? profile.externalDependencies.filter(name => name !== 'sharp') : profile.externalDependencies, projectRoot, output);
   // Smoke-test from the output itself; no dependency fallback into this source tree.

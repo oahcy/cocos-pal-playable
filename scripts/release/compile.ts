@@ -11,9 +11,9 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
     alias: { '@playable/host-application': path.join(applicationDir, 'application.ts') },
     entryPoints: ['config', 'hooks'].map(name => path.join(root, 'src/adapters', profile.adapter, name + '.ts')),
     outdir: path.join(output, 'dist'), outExtension: { '.js': '.cjs' },
-    bundle: true, platform: 'node', target: profile.nodeTarget, format: 'cjs', external: profile.layout === 'creator-extension' ? profile.externalDependencies.filter(name => name !== 'sharp') : profile.externalDependencies,
+    bundle: true, platform: 'node', target: profile.nodeTarget, format: 'cjs', external: profile.layout !== 'cli-platform' ? profile.externalDependencies.filter(name => name !== 'sharp') : profile.externalDependencies,
     // Legacy Creator loaders resolve bare built-ins, but may reject the node: scheme.
-    plugins: profile.layout === 'creator-extension' ? [{
+    plugins: profile.layout !== 'cli-platform' ? [{
       name: 'creator-node-builtins',
       setup(build) {
         build.onResolve({ filter: /^sharp$/ }, () => ({ path: path.join(root, 'src/adapters', profile.adapter, 'sharp.ts') }));
@@ -26,9 +26,9 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
     }] : [],
     minify: true, sourcemap: false,
   });
-  if (profile.editorIntegration === 'playable-platform') {
+  if (profile.editorIntegration) {
     await esbuild.build({
-      entryPoints: [path.join(root, 'src/adapters/creator-platform/panel.ts')],
+      entryPoints: [path.join(root, 'src/adapters', profile.editorIntegration === 'simple-build-target' ? 'creator-2x' : 'creator-platform', 'panel.ts')],
       outfile: path.join(output, 'dist/panel.cjs'), bundle: true, platform: 'node',
       format: 'cjs', target: profile.nodeTarget, minify: true, sourcemap: false,
     });

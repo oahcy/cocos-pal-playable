@@ -16,7 +16,7 @@ export function readFiles(root: string): Map<string, Buffer> {
 }
 export const hash = (data: Buffer) => createHash('sha256').update(data).digest('hex');
 export const releaseFile = 'playable-release.json';
-export interface Release { schemaVersion: number; pluginVersion: string; host: string; profile: string; nodeTarget: string; editorIntegration?: 'playable-platform'; platform: string; arch: string; files: Record<string, string> }
+export interface Release { schemaVersion: number; pluginVersion: string; host: string; profile: string; nodeTarget: string; editorIntegration?: 'playable-platform' | 'simple-build-target'; platform: string; arch: string; files: Record<string, string> }
 export function verifyFiles(files: Map<string, Buffer>): Release {
   const metadata = files.get(releaseFile);
   if (!metadata) throw new Error('Missing plugin release manifest');
