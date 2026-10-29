@@ -1,3 +1,4 @@
+import esbuild from 'esbuild';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,6 +16,7 @@ test('shared template accepts explicit resources and plain inputs without host m
   const resources = { templates: path.join(root, 'templates'), runtime: path.join(root, 'runtime') };
   fs.cpSync(defaultResources.templates, resources.templates, { recursive: true });
   fs.mkdirSync(resources.runtime);
+  fs.copyFileSync(path.join(defaultResources.runtime, 'bootstrap.ts.ejs'), path.join(resources.runtime, 'bootstrap.ts.ejs'));
   fs.writeFileSync(path.join(resources.runtime, 'playable-runtime.js'), 'customRuntime()');
   const input = Object.freeze({ root, applicationJS: path.join(root, 'application space.js'),
     systemJs: path.join(root, 'system.js'), importMap: path.join(root, 'map.json'), orientation: 'portrait' as const });
@@ -49,4 +51,21 @@ test('compiled CLI template adapter maps compiler context and writes expected ou
   assert.ok(fs.readFileSync(result.paths.indexHTML, 'utf8').includes(getChannel('tiktok').sdkURL));
   assert.deepEqual(fs.readFileSync(path.join(root, 'playable-runtime.js')), fs.readFileSync(path.join(defaultResources.runtime, 'playable-runtime.js')));
   assert.ok(options.md5CacheOptions.includes.includes('index.js'));
+});
+
+
+test('browser adapter bundles contain only the selected startup and no build-side modules', async () => {
+  for (const adapter of ['application-class', 'creator-300_352']) {
+    const directory = path.resolve(__dirname, '../src/adapters', adapter);
+    const result = await esbuild.build({
+      entryPoints: [path.resolve(__dirname, '../runtime/entries/single-html.ts')],
+      alias: { '@playable/host-runtime': path.join(directory, 'runtime.ts') },
+      bundle: true, platform: 'browser', format: 'iife', write: false, metafile: true,
+    });
+    const inputs = Object.keys(result.metafile!.inputs).map(name => name.replaceAll('\\', '/'));
+    assert.ok(inputs.some(name => name.endsWith('src/adapters/' + adapter + '/runtime.ts')));
+    assert.ok(!inputs.some(name => /\/(hooks|config|application|sharp)\.ts$/.test(name)));
+    const other = adapter === 'application-class' ? 'creator-300_352' : 'application-class';
+    assert.ok(!inputs.some(name => name.includes('src/adapters/' + other + '/')));
+  }
 });

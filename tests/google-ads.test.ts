@@ -61,14 +61,35 @@ test('Google refuses malformed HTML, missing orientation and wrong SDK placement
   }
 });
 
-test('Google rejects file count overflow and arbitrary external assets', async t => {
+test('Google retains ZIP on file count overflow but still rejects external assets', async t => {
   const root = await fixture(t);
   fs.appendFileSync(path.join(root, 'index.html'), '<img src="https://example.com/image.png">');
   await assert.rejects(packageBuild(root, 'google-ads'), /External/);
   const valid = await fixture(t); fs.mkdirSync(path.join(valid, 'assets'));
-  for (let i = 0; i < 512; i++) fs.writeFileSync(path.join(valid, 'assets', i + '.txt'), 'x');
-  await assert.rejects(packageBuild(valid, 'google-ads'), /512 files/);
-  assert.equal(fs.existsSync(path.join(valid + '-delivery', 'google-ads.zip')), false);
+  const initial = await packageBuild(valid, 'google-ads');
+  for (let i = initial.files!.length; i < 512; i++) fs.writeFileSync(path.join(valid, 'assets', i + '.txt'), 'x');
+  const boundary = await packageBuild(valid, 'google-ads');
+  assert.equal(boundary.files!.length, 512);
+  assert.equal(boundary.fileCountLimitExceeded, false);
+  fs.writeFileSync(path.join(valid, 'assets', 'overflow.txt'), 'extra');
+  const messages: string[] = [];
+  const originalError = console.error;
+  let overflow: Awaited<ReturnType<typeof packageBuild>>;
+  try {
+    console.error = (...args: unknown[]) => { messages.push(args.join(' ')); };
+    overflow = await packageBuild(valid, 'google-ads');
+  } finally { console.error = originalError; }
+  assert.equal(overflow.status, 'packaged');
+  assert.equal(overflow.maxFiles, 512);
+  assert.equal(overflow.fileCountLimitExceeded, true);
+  assert.match(overflow.fileCountLimitError!, /512 files; got 513/);
+  assert.ok(messages.some(message => message.includes('512 files; got 513')));
+  const zip = await JSZip.loadAsync(fs.readFileSync(overflow.archive), { checkCRC32: true });
+  assert.equal(Object.keys(zip.files).length, 513);
+  assert.equal(await zip.file('assets/overflow.txt')!.async('string'), 'extra');
+  const saved = JSON.parse(fs.readFileSync(path.join(valid, 'playable-google-ads', 'report.json'), 'utf8'));
+  assert.equal(saved.fileCountLimitExceeded, true);
+  assert.equal(saved.status, 'packaged');
   await assert.rejects(packageBuild(valid, 'google-ads', { outputFormat: 'single-html' }), /does not support/);
 });
 

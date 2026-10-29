@@ -1,6 +1,6 @@
 # 试玩配置与交付
 
-CLI 安装见 [README](../README.md)，Creator 操作见 [Creator 3.8.3–3.8.5](creator-383_385.md)，Google 的专用规则见 [Google Ads](google-ads.md)。
+CLI 安装见 [README](../README.md)，Creator 操作见 [Creator 独立平台](creator-platform.md)，Google 的专用规则见 [Google Ads](google-ads.md)。
 
 ## 构建配置
 
@@ -35,9 +35,9 @@ CLI 从 packages.playable 读取以下参数；Creator 面板传入同一组参�
 
 ## 产物与预览
 
-输出在构建目录旁的 <目录>-delivery/，含广告包、报告和所有权标记。默认 TikTok 输出 tiktok.zip，Google 输出 google-ads.zip；报告记录体积、SHA-256、图片处理和待验项。上传广告包，不上传报告；构建失败不可沿用旧包。
+输出在 `<构建目录>/playable-<渠道>/`，含广告包、报告和所有权标记，不再创建旁边的 `-delivery` 目录。渠道目录不参与资源收集；不同渠道的包和报告互不覆盖。默认 TikTok 输出 tiktok.zip，Google 输出 google-ads.zip；报告记录体积、SHA-256、图片处理和待验项。上传广告包，不上传报告；构建失败不可沿用旧包。
 
-体积超限只打印错误日志，不中断构建，仍输出产物及哈希。报告保持 status=packaged，同时设置 sizeLimitExceeded=true 和 sizeLimitError；这表示包已生成但不满足大小限制。资源缺失、非法引用、编码或写入失败仍会阻止打包。
+体积超限只打印错误日志，不中断构建，仍输出产物及哈希。报告保持 status=packaged，同时设置 sizeLimitExceeded=true 和 sizeLimitError；这表示包已生成但不满足大小限制。Google Ads ZIP 超过 512 个文件同样只打印错误并保留产物，报告设置 maxFiles、fileCountLimitExceeded 和 fileCountLimitError；未配置文件数上限的渠道不套用此限制。资源缺失、非法引用、编码或写入失败仍会阻止打包。
 
 TikTok 单 HTML 输出 tiktok.experimental.html 和 single-html.report.json，与 ZIP 互不覆盖。它只用于格式验证，不表示 TikTok 接受此投放格式；报告标记 channelDefaultFormat=false，并保守沿用渠道大小上限。Google 当前只支持 ZIP。
 
@@ -86,7 +86,7 @@ const off = playable.onMuteChange(muted => { /* 更新业务音频 */ });
 
 启动器预加载启动场景，等待 SDK 就绪和允许展示后启动游戏。广告隐藏时暂停，只恢复广告自己暂停的主循环；业务在隐藏期间再次 pause 的归属需自行协调。启动错误显示通用提示，具体原因留在控制台，订阅回调异常独立处理。
 
-运行时公共逻辑在 runtime/core.ts，启动控制在 runtime/startup.ts，渠道实现位于 runtime/adapters/；构建时显式选择 runtime/entries/ 入口。内部契约以 runtime/adapter.ts 为准，不做运行时渠道探测，__startPlayable 不是游戏 API。
+运行时公共逻辑在 runtime/core.ts，启动及 settings 适配在 src/adapters/ 中，由发布 profile 的 applicationAdapter 选择，渠道实现位于 runtime/adapters/；构建时显式选择 runtime/entries/ 入口。内部契约以 runtime/adapter.ts 为准，不做运行时渠道探测，__startPlayable 不是游戏 API。
 
 ## 验收边界
 

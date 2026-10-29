@@ -1,9 +1,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import JSZip from 'jszip';
-import { getChannel } from '../src/channel';
-const SDK_URL = getChannel('tiktok').sdkURL;
-const GOOGLE_SDK_URL = getChannel('google-ads').sdkURL;
+import { prepareMockPreview } from './preview-sdk';
 const archive = process.argv[2];
 if (!archive) throw new Error('Usage: npx tsx scripts/preview.ts <playable.zip|playable.html> [--mock-sdk]');
 const mock = process.argv.includes('--mock-sdk');
@@ -15,25 +13,28 @@ const types: Record<string, string> = { html: 'text/html', js: 'application/java
   const input = fs.readFileSync(archive);
   const html = /\.html$/i.test(archive) ? input : undefined;
   const zip = html ? undefined : await JSZip.loadAsync(input);
+  const index = html?.toString() ?? await zip?.file('index.html')?.async('string');
+  if (index === undefined) throw new Error('Preview archive is missing index.html');
+  const preview = mock ? prepareMockPreview(index) : undefined;
   const server = http.createServer(async (req, res) => {
     try {
       const name = decodeURIComponent(new URL(req.url || "/", 'http://localhost').pathname).slice(1) || 'index.html';
       res.setHeader('Cache-Control', 'no-store');
-      if (mock && name === '__preview/sdk.js') {
+      if (preview && name === '__preview/sdk.js') {
         res.setHeader('Content-Type', 'application/javascript');
-        res.end('window.ExitApi={exit(){console.info("[Playable preview] ExitApi.exit (mock; no redirect)");}};window.playableSDK={isReady:()=>true,isMuted:()=>false,isViewable:()=>true,sendEvent(event){console.info("[Playable preview]",event)},addEventListener(){}};window.openAppStore=function(){console.info("[Playable preview] openStore (mock; no redirect)");};');
+        res.end(preview.sdk);
         return;
       }
       const entry = zip?.file(name);
       if (!entry && !(html && name === 'index.html')) { res.writeHead(404); res.end('Not found'); return; }
       let data = html && name === 'index.html' ? html : await entry!.async('nodebuffer');
-      if (mock && name === 'index.html') data = Buffer.from(data.toString().replace(SDK_URL, '/__preview/sdk.js').replace(GOOGLE_SDK_URL, '/__preview/sdk.js'));
+      if (preview && name === 'index.html') data = Buffer.from(preview.html);
       res.setHeader('Content-Type', (types[name.split('.').pop() || ''] || 'application/octet-stream'));
       res.end(data);
     } catch (error) { res.writeHead(400); res.end('Invalid request'); }
   });
   server.listen(port, '127.0.0.1', () => {
     console.log('Preview: http://127.0.0.1:' + (server.address() as import('node:net').AddressInfo).port);
-    console.log(mock ? 'SDK mock is active in this preview only; Artifact is unchanged.' : 'Using official SDK.');
+    console.log(preview ? `SDK mock: ${preview.channel}; preview only, artifact unchanged.` : 'Using official SDK.');
   });
 })().catch(error => { console.error(error); process.exitCode = 1; });

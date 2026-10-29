@@ -1,5 +1,7 @@
 export const title = "Playable Ads";
 export const options = {
+  storeUrl: 'Store URL (HTTPS)',
+  channelsHint: 'Select channels to reveal their settings. One build can produce multiple channels.',
   "embeddedEncoding": "Single HTML encoding",
   "outputFormat": "Output format",
   "channel-default": "Channel default",

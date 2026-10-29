@@ -10,11 +10,17 @@ import { encodeSingleHTML } from './packaging/single-html';
 import encodeDirectoryZip from './packaging/directory-zip';
 import type { Entry, PackageReport } from './types';
 const encoders: Record<string, (entries: Entry[]) => Promise<Buffer>> = { 'directory-zip': encodeDirectoryZip };
-async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOptions: PackageOptions = {}, resources: PackagingResources = defaultResources) {
-  const embeddedEncoding = readEmbeddedEncoding(imageOptions.embeddedEncoding);
-  const settings = readImageOptions(imageOptions);
+export interface PackagingContext {
+  resources?: PackagingResources;
+  // Run after invalidating the previous artifact, inside the failure/report lifecycle.
+  prepareOverrides?: () => Promise<readonly Entry[]>;
+}
+async function packageBuild(inputRoot: string, channelId = 'tiktok', options: PackageOptions = {}, context: PackagingContext = {}) {
+  const resources = context.resources ?? defaultResources;
+  const embeddedEncoding = readEmbeddedEncoding(options.embeddedEncoding);
+  const settings = readImageOptions(options);
   const channel = getChannel(channelId);
-  const requested = readOutputFormat(imageOptions.outputFormat);
+  const requested = readOutputFormat(options.outputFormat);
   const format = requested === 'channel-default' ? channel.packageFormat : requested;
   if (channel.supportedFormats && !channel.supportedFormats.includes(format)) throw new Error(channel.displayName + ' does not support ' + format + '; supported formats: ' + channel.supportedFormats.join(', '));
   const channelDefaultFormat = format === channel.packageFormat;
@@ -25,10 +31,11 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     : encoders[format];
   if (!encode) throw new Error('Unsupported playable packaging strategy: ' + format);
   const root = fs.realpathSync(inputRoot);
-  const delivery = root + '-delivery';
+  // Keep each channel's artifacts inside the build; collect() only reads Web input roots.
+  const delivery = path.join(root, 'playable-' + channel.id);
   const marker = path.join(delivery, '.playable-owner.json');
   if (fs.existsSync(delivery)) {
-    if (fs.lstatSync(delivery).isSymbolicLink() || !fs.existsSync(marker) ||
+    if (fs.lstatSync(delivery).isSymbolicLink() || !fs.statSync(delivery).isDirectory() || !fs.existsSync(marker) ||
         JSON.parse(fs.readFileSync(marker, 'utf8')).source !== root) throw new Error('Delivery directory is not owned by this build: ' + delivery);
   } else {
     fs.mkdirSync(delivery);
@@ -48,7 +55,12 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     verification: 'local-static-only', pending: [...channel.pending, ...(channelDefaultFormat ? [] : ['Format verification only: not the channel default delivery format; size cap is retained conservatively'])] };
   try {
     console.log(`[Playable] Collecting delivery files from ${root}.`);
-    const originalEntries = collect(root, channel);
+    // Channel pages, SDK wrappers and settings override the shared Web files in memory.
+    // Never rewrite another channel's inputs or copy the full asset tree per channel.
+    const overrides = await context.prepareOverrides?.() ?? [];
+    const files = new Map(collect(root, channel).map(entry => [entry.name, entry]));
+    for (const entry of overrides) files.set(entry.name, entry);
+    const originalEntries = [...files.values()].sort((a, b) => a.name.localeCompare(b.name, 'en'));
     const originalBytes = originalEntries.reduce((sum, entry) => sum + entry.data.length, 0);
     console.log(`[Playable] Collected ${originalEntries.length} files (${originalBytes} bytes).`);
     report.pending.push(...(channel.reviewEntries?.(originalEntries) || []));
@@ -61,6 +73,14 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     report.bytes = data.length;
     console.log(`[Playable] Encoded ${data.length} bytes; writing artifact.`);
     report.files = entries.map(entry => ({ path: entry.name, bytes: entry.data.length }));
+    if (format === 'directory-zip' && channel.maxFiles !== undefined) {
+      report.maxFiles = channel.maxFiles;
+      report.fileCountLimitExceeded = entries.length > channel.maxFiles;
+      if (report.fileCountLimitExceeded) {
+        report.fileCountLimitError = channel.displayName + ' ZIP must contain no more than ' + channel.maxFiles + ' files; got ' + entries.length;
+        console.error('[Playable] ' + report.fileCountLimitError + '. Artifact will be retained; build continues.');
+      }
+    }
     report.sizeLimitExceeded = data.length >= channel.maxBytesExclusive;
     if (report.sizeLimitExceeded) {
       report.sizeLimitError = channel.displayName + ' ' + format + ' must be smaller than ' + channel.maxBytesExclusive + ' bytes; got ' + data.length;
@@ -72,6 +92,8 @@ async function packageBuild(inputRoot: string, channelId = 'tiktok', imageOption
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
     return report;
   } catch (error) {
+    report.status = 'failed';
+    if (fs.existsSync(archive)) fs.unlinkSync(archive);
     report.error = error instanceof Error ? error.message : String(error);
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
     throw error;

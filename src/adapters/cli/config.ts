@@ -12,6 +12,7 @@ export default {
     sourceMaps: { default: false },
   },
   options: {
+    storeUrl: { label: 'i18n:playable.options.storeUrl', type: 'string', default: '' },
     outputFormat: { label: 'i18n:playable.options.outputFormat', type: 'enum', items: outputFormats.map(value => ({ value, label: 'i18n:playable.options.' + value })), default: defaults.outputFormat },
     imageCompression: { label: 'i18n:playable.options.imageCompression', type: 'enum', items: imageCompressionModes.map(value => ({ value, label: 'i18n:playable.options.' + value })), default: defaults.imageCompression },
     embeddedEncoding: { label: 'i18n:playable.options.embeddedEncoding', type: 'enum', items: embeddedEncodings.map(value => ({ value, label: value })), default: defaults.embeddedEncoding },

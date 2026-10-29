@@ -10,7 +10,7 @@ npm run install:cli -- D:/code/cocos-cli
 node D:/code/cocos-cli/dist/cli.js build -j <项目目录> -p playable -c D:/code/cocos-pal-playable/examples/google-ads.build.json
 ```
 
-交付文件为 `<构建目录>-delivery/google-ads.zip`，同目录生成 `report.json`。
+交付文件为 `<构建目录>/playable-google-ads/google-ads.zip`，同目录生成 `report.json`。
 ZIP 根目录包含 `index.html`，不生成 TikTok 的 `config.json`。
 默认仅支持多文件 ZIP；请求 `single-html` 会明确拒绝。
 
@@ -28,7 +28,7 @@ ZIP 根目录包含 `index.html`，不生成 TikTok 的 `config.json`。
 ## 构建校验
 
 - ZIP 不超过 5,000,000 字节（共享字段使用 exclusive cap，因此值为 5,000,001）。
-- ZIP 不超过 512 个文件，保留 UTF-8 页面与响应式画布。
+- ZIP 规范上限为 512 个文件；超限记录错误并保留 ZIP，报告标记 fileCountLimitExceeded=true，不代表满足投放规范。保留 UTF-8 页面与响应式画布。
 - head 中生成唯一 `ad.orientation`：portrait、landscape 或 portrait,landscape。
 - DOCTYPE、html/body 显式闭合标签、官方 Exit API 的位置和加载顺序。
 - 复用公共相对路径、文件存在性、import-map、Bundle 和远程资源配置检查。

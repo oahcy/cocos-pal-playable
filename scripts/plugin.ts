@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { generatePlugin } from './release/generate';
 import { packPlugin, verifyArchive } from './release/archive';
-import { selectProfile } from './release/profile';
+import { projectRoot, selectProfile } from './release/profile';
 import { readFiles, verifyFiles } from './release/files';
 async function main() {
   const [command, ...args] = process.argv.slice(2);
@@ -13,9 +13,12 @@ async function main() {
     if (!match || options[match[1]]) throw new Error('Unknown or repeated argument: ' + arg);
     options[match[1]] = match[2];
   }
+  if (command !== 'generate' && (options.host || options['creator-version'])) {
+    throw new Error('Host and Creator version options are only supported by generate; pack and verify use the existing plugin manifest');
+  }
   if (command === 'generate') {
     const host = options.host || 'cli';
-    const profile = selectProfile(host, options['creator-version']);
+    const profile = selectProfile(host, options['creator-version'], projectRoot);
     if (!options.out) throw new Error('generate requires --out=<fresh plugin directory>');
     const output = path.resolve(options.out);
     if (dryRun) { console.log({ command, profile, output }); return; }

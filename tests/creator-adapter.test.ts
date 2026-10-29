@@ -9,30 +9,20 @@ import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { generatePlugin } from '../scripts/release/generate';
 import { verifyFiles, readFiles } from '../scripts/release/files';
-import { onBeforeBuild, onAfterBuild } from '../src/adapters/creator-383_385/hooks';
-
-test('Creator disabled option leaves ordinary Web builds alone', async () => {
-  onBeforeBuild({ platform: 'web-mobile', sourceMaps: true, server: 'https://example.com' });
-  assert.equal(await onAfterBuild({ platform: 'web-mobile' }, undefined as never), undefined);
-  const options = { platform: 'web-mobile', packages: { playable: { enabled: true } } };
-  assert.throws(() => onBeforeBuild({ ...options, sourceMaps: true }), /Source Maps/);
-  assert.throws(() => onBeforeBuild({ ...options, md5Cache: true }), /MD5 Cache/);
-  assert.throws(() => onBeforeBuild({ ...options, platform: 'wechatgame' }), /web-mobile/);
-});
-
 test('standalone Creator extension maps final paths and packages ZIP and HTML through shared core', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'playable-creator-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const plugin = path.join(root, 'plugin');
   await generatePlugin(plugin, 'creator', '3.8.3');
-  assert.equal(verifyFiles(readFiles(plugin)).profile, 'creator-383_385');
-  for (const version of ['3.8.4', '3.8.5']) {
+  assert.equal(verifyFiles(readFiles(plugin)).profile, 'creator-platform-383_384');
+  for (const version of ['3.8.4']) {
     const sibling = path.join(root, 'plugin-' + version);
     await generatePlugin(sibling, 'creator', version);
     assert.deepEqual(readFiles(sibling), readFiles(plugin), version + ' must produce the same shared plugin as 3.8.3');
   }
   const manifest = JSON.parse(fs.readFileSync(path.join(plugin, 'package.json'), 'utf8'));
   assert.equal(manifest.name, 'playable');
+  assert.equal(manifest.editor, '3.8.3 || 3.8.4');
   assert.equal(fs.existsSync(path.join(plugin, 'node_modules/sharp')), false);
   assert.equal(manifest.package_version, 2);
   assert.equal(manifest.contributes, undefined);
@@ -50,15 +40,15 @@ test('standalone Creator extension maps final paths and packages ZIP and HTML th
       },
     }, { filename });
     if (name === 'hooks') {
-      const legacy = mod.exports as typeof import('../src/adapters/creator-383_385/hooks');
-      legacy.onBeforeBuild({ platform: 'web-mobile', packages: { playable: { enabled: true, channel: 'tiktok' } } });
-      assert.throws(() => legacy.onBeforeBuild({ platform: 'web-mobile', packages: { playable: { enabled: true, channel: 'constructor' } } }), /Unsupported playable channel/);
+      const legacy = mod.exports as typeof import('../src/adapters/creator-platform/hooks');
+      legacy.onBeforeInit({ platform: 'playable', packages: { playable: { channel: 'tiktok' } } });
+      assert.throws(() => legacy.onBeforeInit({ platform: 'playable', packages: { playable: { channel: 'constructor' } } }), /Unsupported playable channel/);
     }
   }
   const config = require(path.join(plugin, manifest.contributions.builder));
-  assert.deepEqual(Object.keys(config.configs), ['web-mobile']);
-  assert.equal(config.configs['web-mobile'].options.enabled.default, false);
-  const hooks = require(path.join(plugin, 'dist/hooks.cjs')) as typeof import('../src/adapters/creator-383_385/hooks');
+  assert.deepEqual(Object.keys(config.configs), ['playable']);
+  assert.equal('enabled' in config.configs.playable.options, false);
+  const hooks = require(path.join(plugin, 'dist/hooks.cjs')) as typeof import('../src/adapters/creator-platform/hooks');
   const globals = globalThis as unknown as { Build?: unknown };
   const oldBuild = globals.Build;
   const editorGlobals = globalThis as unknown as { Editor?: unknown };
@@ -86,19 +76,19 @@ test('standalone Creator extension maps final paths and packages ZIP and HTML th
     get settings() { return path.join(output, 'src/settings.json'); }
   }
   const result = { paths: new Paths() };
-  const options = { platform: 'web-mobile', packages: { playable: { enabled: true, orientation: 'portrait' } } };
+  const options = { platform: 'playable', packages: { playable: { orientation: 'portrait' } } };
   // Compression must resolve from the supplied host root; the plugin contains no sharp.
   const sharp = require('sharp') as typeof import('sharp');
   fs.mkdirSync(path.join(output, 'assets'), { recursive: true });
   fs.writeFileSync(path.join(output, 'assets/test.png'), await sharp({ create: { width: 16, height: 16, channels: 4, background: '#abcdef' } }).png().toBuffer());
-  const report = (await hooks.onAfterBuild({ ...options, packages: { playable: { ...options.packages.playable, imageCompression: 'lossy', imageQuality: 60 } } }, result))!;
+  const report = (await hooks.onAfterBuild({ ...options, packages: { playable: { ...options.packages.playable, imageCompression: 'lossy', imageQuality: 60 } } }, result))[0];
   assert.equal(report.images?.mode, 'lossy');
   assert.equal(report.images?.files.length, 1);
   const zip = await JSZip.loadAsync(fs.readFileSync(report.archive), { checkCRC32: true });
   assert.ok(zip.file('playable-runtime.js'));
   assert.ok((await zip.file('index.js')!.async('string')).includes('System.register'));
   assert.deepEqual(JSON.parse(await zip.file('config.json')!.async('string')), { Playable_orientation: 1 });
-  const html = (await hooks.onAfterBuild({ ...options, packages: { playable: { ...options.packages.playable, outputFormat: 'single-html', embeddedEncoding: 'base122' } } }, result))!;
+  const html = (await hooks.onAfterBuild({ ...options, packages: { playable: { ...options.packages.playable, outputFormat: 'single-html', embeddedEncoding: 'base122' } } }, result))[0];
   assert.equal(html.packageFormat, 'single-html');
   assert.equal(html.embeddedEncoding, 'base122');
   assert.ok(fs.readFileSync(html.archive, 'utf8').includes('playable-sdk.js'));

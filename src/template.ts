@@ -12,6 +12,7 @@ export interface TemplateInput {
   polyfillsJs?: string;
   title?: string;
   orientation: Orientation;
+  storeUrl?: string;
 }
 export type CompileBootstrap = (source: string) => Promise<string | undefined>;
 
@@ -24,7 +25,7 @@ export async function renderPlayableTemplate(input: TemplateInput, channel: Chan
     const encodedSegments = relativePath.split(path.sep).map(encodeURIComponent);
     return './' + encodedSegments.join('/');
   };
-  const bootstrap = await Ejs.renderFile(path.join(resources.templates, 'index.ts.ejs'), {
+  const bootstrap = await Ejs.renderFile(path.join(resources.runtime, 'bootstrap.ts.ejs'), {
     applicationURL: JSON.stringify(url(input.applicationJS)),
   });
   const transformed = await compile(bootstrap);
@@ -35,10 +36,17 @@ export async function renderPlayableTemplate(input: TemplateInput, channel: Chan
     polyfillsURL: input.polyfillsJs ? url(input.polyfillsJs) : '',
     systemURL: url(input.systemJs), importMapURL: url(input.importMap),
   });
+  let channelRuntime = fs.readFileSync(path.join(resources.runtime, channel.runtimeFile || 'playable-runtime.js'));
+  if (channel.requiresStoreUrl) {
+    if (!input.storeUrl) throw new Error(channel.displayName + ' requires a store URL');
+    // JSON encoding keeps user input out of executable syntax; HTML escaping happens at inlining.
+    const config = 'window.__playableStoreUrl=' + JSON.stringify(input.storeUrl) + ';\n';
+    channelRuntime = Buffer.concat([Buffer.from(config), channelRuntime]);
+  }
   return [
     { name: 'index.js', data: Buffer.from(transformed) },
     { name: 'index.html', data: Buffer.from(html) },
-    { name: 'playable-runtime.js', data: fs.readFileSync(path.join(resources.runtime, channel.runtimeFile || 'playable-runtime.js')) },
+    { name: 'playable-runtime.js', data: channelRuntime },
     { name: 'style.css', data: fs.readFileSync(path.join(resources.templates, 'style.css')) },
   ];
 }

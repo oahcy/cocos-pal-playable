@@ -14,7 +14,7 @@ const channel: Channel = {
   supportedFormats: ['directory-zip'],
   packageFormat: 'directory-zip', resourceMode: 'files', archiveName: 'google-ads.zip',
   // The shared packager uses an exclusive cap; Google permits at most 5 MB.
-  maxBytesExclusive: 5000001, extraRootFiles: [],
+  maxBytesExclusive: 5000001, maxFiles: 512, extraRootFiles: [],
   pending: ['Google Ads upload/review', 'real-device CTA and visibility', 'dynamic network requests and storage usage', 'audio gesture policy and responsive layout', 'explicit SVG end tags'],
   createFiles() { return []; },
   headHTML({ orientation }) {
@@ -28,7 +28,6 @@ const channel: Channel = {
     return fonts.map(entry => 'Verify Google web font provenance and upload acceptance: ' + entry.name);
   },
   validate(entries) {
-    if (entries.length > 512) throw new Error('Google Ads ZIP must contain no more than 512 files');
     const html = entries.find(entry => entry.name === 'index.html')?.data.toString() || '';
     // Require the explicit document structure expected by the upload validator.
     const hasDocumentTags = /^\s*<!doctype\s+html\s*>/i.test(html)

@@ -104,6 +104,36 @@ test('load and preload await native resources without changing pack routing or r
   await assert.rejects(new Promise<void>((resolve, reject) => engine.assetManager.pipeline.pipes[1](task, error => error ? reject(error) : resolve())), /prepare assets.*absent.png/);
 });
 
+test('CCON requests prefer bin, fall back to cconb only on read failure, and report missing resources', async () => {
+  const { installEmbeddedAssets } = await import('../runtime/embedded/engine');
+  type Engine = import('../runtime/embedded/engine').EmbeddedEngine;
+  const pre: Engine['assetManager']['preprocessPipe'] = (_task, done) => done();
+  let handlers!: Parameters<Engine['assetManager']['downloader']['register']>[0];
+  const pipeline = () => ({ pipes: [pre], insert() {} });
+  const engine = { cclegacy: { internal: { decodeCCONBinary(bytes: Uint8Array) {
+    if (bytes[0] === 0) throw new Error('invalid CCON header');
+    return [...bytes];
+  } } }, assetManager: { pipeline: pipeline(), fetchPipeline: pipeline(), preprocessPipe: pre,
+    downloader: { bundleVers: {}, register(value: typeof handlers) { handlers = { ...handlers, ...value }; } } },
+  } as unknown as Engine;
+  const archive = new JSZip();
+  archive.file('assets/new.bin', new Uint8Array([1]));
+  archive.file('assets/old.cconb', new Uint8Array([2]));
+  archive.file('assets/both.bin', new Uint8Array([3]));
+  archive.file('assets/both.cconb', new Uint8Array([4]));
+  archive.file('assets/bad.bin', new Uint8Array([0]));
+  archive.file('assets/bad.cconb', new Uint8Array([5]));
+  installEmbeddedAssets(engine, new EmbeddedStore(archive));
+  const load = (url: string) => new Promise((resolve, reject) => {
+    handlers['.cconb'](url, {}, (error, data) => error ? reject(error) : resolve(data));
+  });
+  assert.deepEqual(await load('assets/new.cconb'), [1]);
+  assert.deepEqual(await load('assets/new.cconb?v=1#asset'), [1]);
+  assert.deepEqual(await load('assets/old.cconb'), [2]);
+  assert.deepEqual(await load('assets/both.cconb'), [3]);
+  await assert.rejects(load('assets/bad.cconb'), /load CCONB.*invalid CCON header/);
+  await assert.rejects(load('assets/missing.cconb'), /load CCONB.*Missing embedded resource.*missing.cconb/);
+});
 test('CCONB decoder exceptions reach the downloader callback', async () => {
   const { installEmbeddedAssets } = await import('../runtime/embedded/engine');
   type Engine = import('../runtime/embedded/engine').EmbeddedEngine;
@@ -169,7 +199,7 @@ test('compiled build hook shares ZIP packaging, preserves SDK, and isolates form
   assert.equal(report.status, 'packaged'); assert.equal(report.packageFormat, 'single-html');
   assert.equal(report.channelDefaultFormat, false);
   assert.deepEqual(fs.readFileSync(zip.archive), previousZip);
-  assert.equal(JSON.parse(fs.readFileSync(root + '-delivery/report.json', 'utf8')).packageFormat, 'directory-zip');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'playable-tiktok', 'report.json'), 'utf8')).packageFormat, 'directory-zip');
   const html = fs.readFileSync(report.archive, 'utf8');
   assert.ok(html.includes('src="' + channel.sdkURL + '"'));
   assert.ok(html.includes('<script>channelSDK()</script>'));
@@ -180,7 +210,7 @@ test('compiled build hook shares ZIP packaging, preserves SDK, and isolates form
   fs.writeFileSync(path.join(root, 'style.css'), '@import "other.css";');
   await assert.rejects(packageBuild(root, 'tiktok', { outputFormat: 'single-html' }), /CSS @import/);
   assert.equal(fs.existsSync(report.archive), false);
-  assert.equal(JSON.parse(fs.readFileSync(root + '-delivery/single-html.report.json', 'utf8')).status, 'failed');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'playable-tiktok', 'single-html.report.json'), 'utf8')).status, 'failed');
   assert.deepEqual(fs.readFileSync(zip.archive), previousZip);
 });
 

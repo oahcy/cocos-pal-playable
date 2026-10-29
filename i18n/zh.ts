@@ -1,5 +1,7 @@
 export const title = "试玩广告";
 export const options = {
+  storeUrl: '商店链接（HTTPS）',
+  channelsHint: '勾选需要构建的渠道，再分别设置参数。一次构建可输出多个渠道。',
   "embeddedEncoding": "单 HTML 内嵌编码",
   "outputFormat": "输出格式",
   "channel-default": "渠道默认",

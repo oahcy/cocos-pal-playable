@@ -16,7 +16,7 @@ export function readFiles(root: string): Map<string, Buffer> {
 }
 export const hash = (data: Buffer) => createHash('sha256').update(data).digest('hex');
 export const releaseFile = 'playable-release.json';
-export interface Release { schemaVersion: number; pluginVersion: string; host: string; profile: string; nodeTarget: string; platform: string; arch: string; files: Record<string, string> }
+export interface Release { schemaVersion: number; pluginVersion: string; host: string; profile: string; nodeTarget: string; editorIntegration?: 'playable-platform'; platform: string; arch: string; files: Record<string, string> }
 export function verifyFiles(files: Map<string, Buffer>): Release {
   const metadata = files.get(releaseFile);
   if (!metadata) throw new Error('Missing plugin release manifest');
@@ -31,5 +31,12 @@ export function verifyFiles(files: Map<string, Buffer>): Release {
   }
   const manifest = JSON.parse(files.get('package.json')!.toString());
   if (manifest.version !== release.pluginVersion) throw new Error('Plugin version mismatch');
+  if (release.host === 'creator') {
+    // Dashboard selects compatible packages with engines.creator; retain Editor's field too.
+    if (typeof manifest.editor !== 'string' || !manifest.editor.trim()
+      || manifest.engines?.creator !== manifest.editor) {
+      throw new Error('Creator engines.creator must match the adapted editor versions');
+    }
+  }
   return release;
 }

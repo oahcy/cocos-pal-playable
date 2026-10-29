@@ -1,16 +1,16 @@
 # Cocos Playable
 
-源码已迁入 `cocos-pack/playable/`，后续修改在那里维护；本目录保留作迁移前快照。
-
-私有试玩广告打包插件。支持 TikTok ZIP、Google Ads ZIP，以及用于格式验证的单 HTML。源码使用 TypeScript。
+私有试玩广告打包插件。支持 TikTok ZIP、Google Ads ZIP、AppLovin 单 HTML，以及 TikTok 的实验性单 HTML。源码使用 TypeScript。
 
 - CLI：独立 playable 平台，复用 HTML5 引擎编译与资源构建。
-- Creator 3.8.3–3.8.5：实验构建插件，在 Web Mobile 下启用 Playable；尚未注册独立试玩平台。
-- AppLovin、其他 Creator 版本和 pink 专用面板尚未接入。
+- Creator：统一为独立 Playable 平台，不再提供 Web Mobile 附加构建入口。
+- 当前已放开白名单的 Creator 3.8.9 源码版：独立 Playable 平台，支持勾选多渠道并分别配置，一次构建输出多份广告包，见 [接入说明](docs/creator-platform.md)。
+- 历史独立平台：提供 3.8.3–3.8.9 的生成配置；平台白名单由 Creator 侧负责，历史版本仍需对应宿主验证，见同一接入说明。
+- Creator 3.5.2：独立平台适配，使用旧版 Web 模板与启动协议；正式名称仍为 `playable`，需 Editor 放开白名单。其他更早版本和 pink 专用面板尚未接入。
 
 ## 开发与 CLI 接入
 
-开发环境使用 Node.js 22。先初始化 cocos-cli，再执行：
+源码统一维护于独立仓库 `cocos-pal-playable`；cocos-pack 只接收生成的 Creator 插件产物。开发环境使用 Node.js 22，在本目录运行以下命令；CLI 调试前先初始化 cocos-cli：
 
 ```powershell
 npm ci
@@ -27,14 +27,25 @@ npm run build 生成 dist/ 与 i18n/*.js；npm test 包含构建。生成文件�
 
 ## Creator 与插件发布
 
-[Creator 3.8.3–3.8.5](docs/creator-383_385.md) 说明安装、面板选项和限制；[插件发布](docs/cocos-pack-integration.md) 说明 generate/pack/verify 及后续 cocos-pack 集成。
+生成并单向同步 Creator 插件到 cocos-pack：
+
+```powershell
+npm run pack:cocos -- --root=D:/code/cocos-pack --dry-run
+npm run pack:cocos -- --root=D:/code/cocos-pack
+```
+
+按版本写入 `v<版本>/playable/` 并生成 `CocosPack/v<版本>-playable.zip`。不要在 cocos-pack 修改生成的插件；需要修复时回到本仓库修改、验证并重新生成。
+
+[Creator 独立平台](docs/creator-platform.md) 说明安装、面板选项和限制；[插件发布](docs/cocos-pack-integration.md) 说明 generate/pack/verify 和 cocos-pack 根仓库调度。
 
 Creator 复用编辑器自带 sharp；CLI 独立插件携带自己的依赖。宿主差异集中在适配层，不复制打包核心。
 
 ## 使用文档
 
 - [试玩配置、游戏接口与 ZIP／单 HTML 交付](docs/DELIVERY.md)
+- [ccapi Playable 接口对接设计](docs/ccapi-playable.md)
 - [Google Ads 渠道](docs/google-ads.md)
+- [AppLovin 渠道](docs/applovin.md)
 - [验证结果与未完成项](VALIDATION.md)
 
 ```powershell
@@ -58,6 +69,6 @@ npm run preview -- <ZIP或HTML路径> --mock-sdk
 
 ## 交付边界
 
-广告包在构建目录旁的 <目录>-delivery/，附带报告和所有权标记。仅收集已知根文件及 assets/、cocos-js/、src/，未实现完整资源依赖图。封装位于 onAfterBuild，其他插件此后的修改不会进入广告包。
+广告包位于 `<构建目录>/playable-<渠道>/`，附带报告和所有权标记；例如 `build/playable/playable-tiktok/tiktok.zip`。渠道目录不参与资源收集，重复构建不会把旧广告包打入新包。仅收集已知根文件及 assets/、cocos-js/、src/，未实现完整资源依赖图。封装位于 onAfterBuild，其他插件此后的修改不会进入广告包。
 
 report.status=packaged 只代表本地打包成功。体积、入口、静态引用及渠道规则检查不能替代动态请求、画面、声音、官方安全区或投放审核。SDK 首屏资源清单责任尚待确认，不生成空清单伪造就绪。

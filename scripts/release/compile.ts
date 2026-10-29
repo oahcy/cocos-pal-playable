@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import esbuild from 'esbuild';
@@ -5,7 +6,9 @@ import { builtinModules } from 'node:module';
 import { projectRoot as root, selectProfile } from './profile';
 export async function compilePlugin(output: string, profile = selectProfile()) {
   execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', path.join(root, 'tsconfig.json')], { stdio: 'inherit' });
+  const applicationDir = path.join(root, 'src/adapters', profile.applicationAdapter);
   await esbuild.build({
+    alias: { '@playable/host-application': path.join(applicationDir, 'application.ts') },
     entryPoints: ['config', 'hooks'].map(name => path.join(root, 'src/adapters', profile.adapter, name + '.ts')),
     outdir: path.join(output, 'dist'), outExtension: { '.js': '.cjs' },
     bundle: true, platform: 'node', target: profile.nodeTarget, format: 'cjs', external: profile.layout === 'creator-extension' ? profile.externalDependencies.filter(name => name !== 'sharp') : profile.externalDependencies,
@@ -23,11 +26,24 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
     }] : [],
     minify: true, sourcemap: false,
   });
+  if (profile.editorIntegration === 'playable-platform') {
+    await esbuild.build({
+      entryPoints: [path.join(root, 'src/adapters/creator-platform/panel.ts')],
+      outfile: path.join(output, 'dist/panel.cjs'), bundle: true, platform: 'node',
+      format: 'cjs', target: profile.nodeTarget, minify: true, sourcemap: false,
+    });
+  }
   await esbuild.build({ entryPoints: ['en', 'zh'].map(name => path.join(root, 'i18n', name + '.ts')), outdir: path.join(output, 'i18n'), bundle: true, platform: 'node', format: 'cjs', banner: { js: '// Generated from TypeScript. Do not edit.' } });
-  // Runtime is emitted as part of the distributable, never source-mapped.
-  await esbuild.build({ entryPoints: [path.join(root, 'runtime/entries/tiktok.ts')],
-    outfile: path.join(output, 'dist/playable-runtime.js'), bundle: true, platform: 'browser', format: 'iife', minify: true, target: 'es2017' });
-  await esbuild.build({ entryPoints: [path.join(root, 'runtime/entries/google-ads.ts')],
-    outfile: path.join(output, 'dist/google-ads-runtime.js'), bundle: true, platform: 'browser', format: 'iife', minify: true, target: 'es2017' });
-  await esbuild.build({ entryPoints: [path.join(root, 'runtime/entries/single-html.ts')], outfile: path.join(output, 'dist/single-html-runtime.js'), bundle: true, platform: 'browser', format: 'iife', minify: true, target: 'es2017' });
+  // Emit only the selected adapter's bootstrap and browser implementation.
+  fs.copyFileSync(path.join(applicationDir, 'bootstrap.ts.ejs'), path.join(output, 'dist/bootstrap.ts.ejs'));
+  // SDK entries are shared. Only the host application's startup protocol differs.
+  const runtimes = { tiktok: 'playable-runtime', 'google-ads': 'google-ads-runtime', applovin: 'applovin-runtime', 'single-html': 'single-html-runtime' };
+  for (const [entry, outputName] of Object.entries(runtimes)) {
+    await esbuild.build({
+      entryPoints: [path.join(root, 'runtime/entries', entry + '.ts')],
+      outfile: path.join(output, 'dist', outputName + '.js'), bundle: true,
+      platform: 'browser', format: 'iife', minify: true, target: 'es2017',
+      alias: { '@playable/host-runtime': path.join(applicationDir, 'runtime.ts') },
+    });
+  }
 }

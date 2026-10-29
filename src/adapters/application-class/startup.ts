@@ -16,6 +16,10 @@ export interface PlayableApplication {
 }
 export async function startPlayable(application: PlayableApplication, loadEngine: () => Promise<PlayableEngine>,
   api: PlayableAPI, failure: Promise<never>, document: Document): Promise<void> {
+  let offSDKReady: PlayableUnsubscribe = () => {};
+  try {
+    await Promise.race([new Promise<void>(resolve => { offSDKReady = api.onReady(resolve); }), failure]);
+  } finally { offSDKReady(); }
   const canvas = document.getElementById('GameCanvas');
   if (!(canvas instanceof HTMLCanvasElement) || !canvas.parentElement) throw new Error('Playable canvas is missing');
   const size = canvas.parentElement.getBoundingClientRect();
@@ -41,9 +45,6 @@ export async function startPlayable(application: PlayableApplication, loadEngine
         engine.director.preloadScene(scene, error => error ? reject(error) : resolve());
       }), failure]);
     }
-    let offReady: PlayableUnsubscribe = () => {};
-    try { await Promise.race([new Promise<void>(resolve => { offReady = api.onReady(resolve); }), failure]); }
-    finally { offReady(); }
     while (!api.viewable) {
       let offVisible: PlayableUnsubscribe = () => {};
       try { await Promise.race([new Promise<void>(resolve => { offVisible = api.onResume(resolve); }), failure]); }
@@ -62,14 +63,4 @@ export async function startPlayable(application: PlayableApplication, loadEngine
     engine.game.off(engine.Game.EVENT_RESUME, syncVisibility);
     throw error;
   } finally { engine.game.onPostProjectInitDelegate.remove(prepare); }
-}
-export function showStartupError(document: Document, error: unknown): void {
-  console.error('[Playable] Startup failed', error);
-  if (document.getElementById('playable-startup-error')) return;
-  const message = document.createElement('div');
-  message.id = 'playable-startup-error';
-  message.setAttribute('role', 'alert');
-  message.textContent = 'Unable to start this playable. Please reload and try again.';
-  message.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:#171717;color:white;font:16px sans-serif;z-index:9999';
-  document.body.appendChild(message);
 }

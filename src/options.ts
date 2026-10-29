@@ -22,11 +22,22 @@ export function readImageOptions(options: ImageOptions = {}) {
   if (!Number.isInteger(imageQuality) || imageQuality < 1 || imageQuality > 100) throw new Error('imageQuality must be an integer from 1 to 100');
   return { imageCompression, imageQuality };
 }
-export interface PlayableOptions extends PackageOptions { channel?: string; orientation?: string }
-export function normalizeOptions(settings: PlayableOptions = {}): { channel: string; orientation: Orientation; outputFormat: OutputFormat; embeddedEncoding: EmbeddedEncoding } & Required<ImageOptions> {
+export interface PlayableOptions extends PackageOptions { channel?: string; orientation?: string; storeUrl?: string }
+export function normalizeOptions(settings: PlayableOptions = {}): { channel: string; orientation: Orientation; outputFormat: OutputFormat; embeddedEncoding: EmbeddedEncoding; storeUrl?: string } & Required<ImageOptions> {
   const channel = settings.channel ?? defaults.channel;
   const orientation = settings.orientation ?? defaults.orientation;
-  getChannel(channel);
+  const definition = getChannel(channel);
   if (orientation !== 'auto' && orientation !== 'portrait' && orientation !== 'landscape') throw new Error('Unsupported orientation: ' + orientation);
-  return { channel, orientation, outputFormat: readOutputFormat(settings.outputFormat), embeddedEncoding: readEmbeddedEncoding(settings.embeddedEncoding), ...readImageOptions(settings) };
+  if (definition.supportedOrientations && !definition.supportedOrientations.includes(orientation)) {
+    throw new Error(definition.displayName + ' requires portrait and landscape support (orientation=auto)');
+  }
+  // Ignore stale channel-specific values when switching to a channel that does not use them.
+  const storeUrl = definition.requiresStoreUrl ? settings.storeUrl?.trim() : undefined;
+  if (definition.requiresStoreUrl && !storeUrl) throw new Error(definition.displayName + ' requires a store URL');
+  if (storeUrl) {
+    let url: URL;
+    try { url = new URL(storeUrl); } catch { throw new Error('Invalid store URL'); }
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Store URL must be an HTTPS URL without credentials');
+  }
+  return { ...(storeUrl ? { storeUrl } : {}), channel, orientation, outputFormat: readOutputFormat(settings.outputFormat), embeddedEncoding: readEmbeddedEncoding(settings.embeddedEncoding), ...readImageOptions(settings) };
 }

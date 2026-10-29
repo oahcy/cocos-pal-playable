@@ -14,7 +14,15 @@
     "strict": true,
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "@playable/host-runtime": [
+        "./src/adapters/application-class/runtime.ts"
+      ],
+      "@playable/host-application": [
+        "./src/adapters/application-class/application.ts"
+      ]
+    }
   },
   "include": [
     "runtime/**/*.ts",

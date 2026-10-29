@@ -44,7 +44,7 @@ test('rejects missing references, orientation errors and unowned delivery direct
   await assert.rejects(packageBuild(root), /Missing or escaping/);
   fs.writeFileSync(path.join(root, 'config.json'), '{"Playable_orientation":5}');
   await assert.rejects(packageBuild(root), /orientation/);
-  fs.unlinkSync(path.join(root + '-delivery', '.playable-owner.json'));
+  fs.unlinkSync(path.join(root, 'playable-tiktok', '.playable-owner.json'));
   await assert.rejects(packageBuild(root), /not owned/);
 });
 test('rejects remote settings and MRAID', async t => {
@@ -67,7 +67,7 @@ test('runtime delegates explicit store clicks and never redirects on finish', ()
   assert.throws(() => window.playable!.openStore(), /SDK is unavailable/);
 });
 test('unsupported channels and invalid orientations fail explicitly', () => {
-  assert.throws(() => readOptions({ packages: { playable: { channel: 'applovin' } } }), /Unsupported/);
+  assert.throws(() => readOptions({ packages: { playable: { channel: 'unsupported-test-channel' } } }), /Unsupported/);
   assert.throws(() => readOptions({ packages: { playable: { orientation: 'bad' } } }), /orientation/);
 });
 
@@ -83,7 +83,7 @@ test('retains oversized archives and reports a non-blocking size error', async t
   assert.equal(logged.mock.callCount(), 1);
   assert.ok(fs.existsSync(report.archive));
   assert.equal(fs.statSync(report.archive).size, report.bytes);
-  assert.equal(JSON.parse(fs.readFileSync(root + '-delivery/report.json', 'utf8')).sizeLimitExceeded, true);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'playable-tiktok', 'report.json'), 'utf8')).sizeLimitExceeded, true);
 });
 test('runtime starts muted, reacts to visibility, and supports unsubscribe', async () => {
   const events: Record<string, () => void> = {};
@@ -124,7 +124,7 @@ test('unsupported channel cannot invalidate an existing delivery', async t => {
   const root = fixture(t);
   const report = await packageBuild(root, 'tiktok');
   const before = fs.readFileSync(report.archive);
-  await assert.rejects(packageBuild(root, 'applovin'), /Unsupported playable channel/);
+  await assert.rejects(packageBuild(root, 'unsupported-test-channel'), /Unsupported playable channel/);
   assert.deepEqual(fs.readFileSync(report.archive), before);
 });
 
@@ -177,4 +177,25 @@ test('rejects plugin paths escaping the package and honors preload bundle versio
   await packageBuild(root);
   fs.unlinkSync(path.join(root, 'assets/main/config.new.json'));
   await assert.rejects(packageBuild(root), /bundle main.*config.new.json/);
+});
+
+test('channel outputs stay inside the build and are excluded from repeated packaging', async t => {
+  const root = fixture(t);
+  const first = await packageBuild(root);
+  assert.equal(first.archive, path.join(root, 'playable-tiktok', 'tiktok.zip'));
+  assert.equal(fs.existsSync(root + '-delivery'), false);
+  const original = fs.readFileSync(first.archive);
+  const google = getChannel('google-ads');
+  fs.writeFileSync(path.join(root, 'index.html'), '<!DOCTYPE html><html><head>'
+    + google.headHTML!({ orientation: 'auto' })
+    + '<script src="' + google.sdkURL + '"></script></head><body>'
+    + '<script src="./playable-runtime.js"></script></body></html>');
+  const second = await packageBuild(root, 'google-ads');
+  assert.equal(second.archive, path.join(root, 'playable-google-ads', 'google-ads.zip'));
+  assert.deepEqual(fs.readFileSync(first.archive), original);
+  const repeated = await packageBuild(root, 'google-ads');
+  const zip = await JSZip.loadAsync(fs.readFileSync(repeated.archive));
+  assert.deepEqual(Object.keys(zip.files).sort(), ['index.html', 'playable-runtime.js']);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'playable-tiktok/report.json'), 'utf8')).channel, 'tiktok');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'playable-google-ads/report.json'), 'utf8')).channel, 'google-ads');
 });

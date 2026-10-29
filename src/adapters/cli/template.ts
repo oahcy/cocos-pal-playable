@@ -6,10 +6,11 @@ import { readOptions } from './options';
 import { renderPlayableTemplate } from '../../template';
 
 export async function generatePlayableTemplate(context: BuildContext, options: BuildOptions, result: BuildResult, channel: Channel) {
+  const selected = readOptions(options);
   const files = await renderPlayableTemplate({
     root: result.paths.dir, applicationJS: result.paths.applicationJS,
     systemJs: result.paths.systemJs, importMap: result.paths.importMap, polyfillsJs: result.paths.polyfillsJs,
-    title: options.name, orientation: readOptions(options).orientation,
+    title: options.name, orientation: selected.orientation, storeUrl: selected.storeUrl,
   }, channel, source => context.utils.transformCode(source, { importMapFormat: 'systemjs' }));
   for (const file of files) fs.writeFileSync(path.join(result.paths.dir, file.name), file.data);
   result.paths.indexJs = path.join(result.paths.dir, 'index.js');

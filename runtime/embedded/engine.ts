@@ -1,11 +1,10 @@
 import { EmbeddedStore, resourceError } from './store';
-import type { PlayableEngine } from '../startup';
 type Done = (error: Error | null, data?: unknown) => void;
 interface RequestItem { url: string; ext: string; isNative: boolean; info?: { packs?: unknown }; }
 interface ResourceTask { input: RequestItem[]; output: RequestItem[] }
 type Pipe = (task: ResourceTask, done: (error?: Error) => void) => void;
 interface ResourcePipeline { pipes: Pipe[]; insert(pipe: Pipe, index: number): void }
-export interface EmbeddedEngine extends PlayableEngine {
+export interface EmbeddedEngine {
   cclegacy?: { internal?: { decodeCCONBinary?: (bytes: Uint8Array) => unknown } };
   assetManager: {
     pipeline: ResourcePipeline; fetchPipeline: ResourcePipeline; preprocessPipe: Pipe;
@@ -41,7 +40,11 @@ export function installEmbeddedAssets(engine: EmbeddedEngine, store: EmbeddedSto
         done(new Error('[Playable embedded] Creator CCON decoder is unavailable'));
         return;
       }
-      store.arrayBuffer(url).then(data => decodeCCONBinary(new Uint8Array(data)))
+      // Creator requests CCON as .cconb, but newer builds store it as .bin.
+      // Match its downloader: fall back only on read failure, never on decode failure.
+      const binaryURL = url.replace(/\.cconb(?=[?#]|$)/, '.bin');
+      store.arrayBuffer(binaryURL).catch(() => store.arrayBuffer(url))
+        .then(data => decodeCCONBinary(new Uint8Array(data)))
         .then(data => done(null, data), error => done(resourceError('load CCONB', url, error)));
     },
     '.json': (url, _options, done) => {
