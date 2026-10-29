@@ -5,6 +5,7 @@ export interface Profile {
   adapter: string; nodeTarget: string; runtime: string; layout: string; externalDependencies: string[];
   editorIntegration?: 'playable-platform';
   applicationAdapter: string;
+  artifactDirectory?: string;
 }
 interface CreatorPlatformGroup {
   name: string; from: string; to: string; profile: string | null; verifiedVersions: string[];

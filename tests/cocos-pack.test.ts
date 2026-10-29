@@ -22,6 +22,9 @@ test('cocos-pack planning deduplicates and filters known versions without writin
   assert.throws(() => createPackPlan(['--root=' + root, '--root=' + root]), /Repeated option/);
   assert.deepEqual(plan.targets.map(target => target.version), ['3.8.3', '3.8.4', '3.8.5', '3.8.6']);
   assert.equal(new Set(plan.targets.map(target => target.profile)).size, 2);
+  assert.equal(new Set(plan.targets.map(target => target.directory)).size, 2);
+  assert.equal(plan.targets[0].directory, path.join(root, 'playable/playable_383_384'));
+  assert.equal(plan.targets[2].directory, path.join(root, 'playable/playable_385_389'));
   await executePackPlan(plan);
   assert.deepEqual(fs.readdirSync(root), ['cocos-engine-ccbuild.txt']);
   assert.deepEqual(createPackPlan(['--from=3.8.4', '--to=3.8.5'], root).targets.map(target => target.version), ['3.8.4', '3.8.5']);
@@ -35,7 +38,7 @@ test('cocos-pack planning deduplicates and filters known versions without writin
 
 test('cocos-pack refuses to replace an unowned plugin directory', async t => {
   const root = fixture(t);
-  const directory = path.join(root, 'v3.8.3', 'playable');
+  const directory = path.join(root, 'playable', 'playable_383_384');
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(directory, 'keep.txt'), 'user file');
   await assert.rejects(executePackPlan(createPackPlan(['3.8.3'], root)), /Missing plugin release manifest/);

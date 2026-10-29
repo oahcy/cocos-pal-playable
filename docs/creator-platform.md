@@ -30,7 +30,7 @@ npm run pack-playable -- --from=3.8.3 --to=3.8.9 --dry-run
 npm run pack-playable -- --from=3.8.3 --to=3.8.9
 ```
 
-只处理仓库版本清单与兼容映射的交集。同一 profile 编译一次，输出 `v<版本>/playable` 和 `CocosPack/v<版本>-playable.zip`。输出仍使用 playable 插件名和现有备份规则。
+只处理仓库版本清单与兼容映射的交集。同一 profile 编译一次，输出 `playable/playable_<适配组>/` 和 `CocosPack/v<版本>-playable.zip`。输出仍使用 playable 插件名和现有备份规则。
 
 ## Editor 接入
 

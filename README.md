@@ -34,7 +34,7 @@ npm run pack:cocos -- --root=D:/code/cocos-pack --dry-run
 npm run pack:cocos -- --root=D:/code/cocos-pack
 ```
 
-按版本写入 `v<版本>/playable/` 并生成 `CocosPack/v<版本>-playable.zip`。不要在 cocos-pack 修改生成的插件；需要修复时回到本仓库修改、验证并重新生成。
+按适配组写入 `playable/playable_352/`、`playable/playable_383_384/`、`playable/playable_385_389/`，并按目标版本生成 `CocosPack/v<版本>-playable.zip`。不要在 cocos-pack 修改生成的插件；需要修复时回到本仓库修改、验证并重新生成。
 
 [Creator 独立平台](docs/creator-platform.md) 说明安装、面板选项和限制；[插件发布](docs/cocos-pack-integration.md) 说明 generate/pack/verify 和 cocos-pack 根仓库调度。
 

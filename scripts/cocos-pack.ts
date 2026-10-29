@@ -61,12 +61,21 @@ export function createPackPlan(args: string[], root = path.resolve(projectRoot, 
   const selected = candidates.filter(version => (!from || compareVersions(version, from) >= 0)
     && (!to || compareVersions(version, to) <= 0)).sort(compareVersions);
   if (!selected.length) throw new Error('No adapted Creator versions matched');
-  const targets = selected.map(version => ({
-    version,
-    profile: selectProfile('creator', version, projectRoot).id,
-    directory: path.join(root, 'v' + version, 'playable'),
-    archive: path.join(root, 'CocosPack', 'v' + version + '-playable.zip'),
-  }));
+  const targets = selected.map(version => {
+    const profile = selectProfile('creator', version, projectRoot);
+    const directory = profile.artifactDirectory;
+    if (!directory || !/^playable_\d+(?:_\d+)?$/.test(directory)) throw new Error('Missing or invalid artifact directory: ' + profile.id);
+    return {
+      version, profile: profile.id,
+      directory: path.join(root, 'playable', directory),
+      archive: path.join(root, 'CocosPack', 'v' + version + '-playable.zip'),
+    };
+  });
+  const owners = new Map<string, string>();
+  for (const target of targets) {
+    if (owners.has(target.directory) && owners.get(target.directory) !== target.profile) throw new Error('Artifact directory has multiple profiles');
+    owners.set(target.directory, target.profile);
+  }
   return { root, dryRun, targets };
 }
 
@@ -109,22 +118,27 @@ export async function executePackPlan(plan: PackPlan): Promise<void> {
     generated.set(target.profile, directory);
   }
 
+  const installed = new Set<string>();
   for (const target of plan.targets) {
-    // Prepare and verify a complete replacement before moving the existing version directory.
-    fs.mkdirSync(path.dirname(target.directory), { recursive: true });
-    const prepared = path.join(run, 'prepared-' + target.version);
-    fs.cpSync(generated.get(target.profile)!, prepared, { recursive: true });
-    verifyFiles(readFiles(prepared));
-    const backup = path.join(run, 'backup-' + target.version);
-    const hadPrevious = fs.existsSync(target.directory);
-    if (hadPrevious) fs.renameSync(target.directory, backup);
-    try {
-      fs.renameSync(prepared, target.directory);
-    } catch (error) {
-      if (hadPrevious) fs.renameSync(backup, target.directory);
-      throw error;
+    // Replace each shared profile once; selected versions still receive their own ZIP.
+    if (!installed.has(target.directory)) {
+      // Prepare and verify a complete replacement before moving the existing group directory.
+      fs.mkdirSync(path.dirname(target.directory), { recursive: true });
+      const prepared = path.join(run, 'prepared-' + target.version);
+      fs.cpSync(generated.get(target.profile)!, prepared, { recursive: true });
+      verifyFiles(readFiles(prepared));
+      const backup = path.join(run, 'backup-' + target.version);
+      const hadPrevious = fs.existsSync(target.directory);
+      if (hadPrevious) fs.renameSync(target.directory, backup);
+      try {
+        fs.renameSync(prepared, target.directory);
+      } catch (error) {
+        if (hadPrevious) fs.renameSync(backup, target.directory);
+        throw error;
+      }
+      if (hadPrevious) console.log('[Playable] Previous plugin directory: ' + backup);
+      installed.add(target.directory);
     }
-    if (hadPrevious) console.log('[Playable] Previous plugin directory: ' + backup);
     // packPlugin verifies contents, backs up an existing ZIP, and writes its file diff.
     const result = await packPlugin(target.directory, target.archive);
     await verifyArchive(result.output);

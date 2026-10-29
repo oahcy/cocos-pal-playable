@@ -20,7 +20,8 @@
         "sharp"
       ],
       "editorIntegration": "playable-platform",
-      "applicationAdapter": "application-class"
+      "applicationAdapter": "application-class",
+      "artifactDirectory": "playable_385_389"
     },
     "creator-platform-383_384": {
       "adapter": "creator-platform",
@@ -31,7 +32,8 @@
         "sharp"
       ],
       "editorIntegration": "playable-platform",
-      "applicationAdapter": "application-class"
+      "applicationAdapter": "application-class",
+      "artifactDirectory": "playable_383_384"
     },
     "creator-platform-300_352": {
       "adapter": "creator-300_352",
@@ -42,7 +44,8 @@
         "sharp"
       ],
       "editorIntegration": "playable-platform",
-      "applicationAdapter": "creator-300_352"
+      "applicationAdapter": "creator-300_352",
+      "artifactDirectory": "playable_352"
     }
   },
   "creatorVersions": {
