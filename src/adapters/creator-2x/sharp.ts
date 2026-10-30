@@ -1,7 +1,6 @@
-// Creator 2 has no Editor.App on some hosts. Resolve only from the installed editor.
+// Creator 2 does not consistently ship Sharp. Use the plugin's N-API 3 build,
+// which runs in the editor process without an external Node installation.
 import path from 'node:path';
-declare const Editor: { App?: { path?: string }; url?(value: string): string };
-const root = typeof Editor === 'undefined' ? undefined : Editor.App?.path || Editor.url?.('app://');
-if (!root) throw new Error('Creator image compression requires the editor installation path');
-const hostSharp = require(path.join(root, 'node_modules/sharp')) as typeof import('sharp');
-export default hostSharp;
+const sharp = require(path.join(__dirname, '../node_modules/sharp-creator2')) as typeof import('sharp');
+console.log('[Playable] Image backend: bundled Sharp (Editor Node ' + process.versions.node + ', PID ' + process.pid + ').');
+export default sharp;

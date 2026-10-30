@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { readCreator2Settings } from './settings';
 import path from 'node:path';
 import Ejs from 'ejs';
 import { selectedChannels } from '../creator-shared/selection';
@@ -23,10 +24,7 @@ export async function deliverCreator2(options: Options): Promise<unknown[]> {
   if (engines.length !== 1) throw new Error('Expected one Creator 2 Web engine');
   for (const name of ['src/settings.js', 'main.js']) if (!fs.existsSync(path.join(root, name))) throw new Error('Missing Creator 2 Web input: ' + name);
   const rawSettings = fs.readFileSync(path.join(root, 'src/settings.js'), 'utf8');
-  const match = /^\s*window\._CCSettings\s*=\s*([\s\S]*?)\s*;?\s*$/.exec(rawSettings);
-  if (!match) throw new Error('Unsupported Creator 2 settings script');
-  // Host-generated settings must be JSON; never execute project JS in the build worker.
-  const settings = JSON.parse(match[1]);
+  const settings = readCreator2Settings(rawSettings);
   if (settings.server || settings.remoteBundles?.length) throw new Error('Remote settings are not supported in playable builds');
   const physics = names.filter(name => /^physics(?:-min)?\.js$/.test(name));
   if (physics.length > 1) throw new Error('Ambiguous Creator 2 physics scripts');

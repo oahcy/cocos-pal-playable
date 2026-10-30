@@ -173,3 +173,22 @@ Google Ads：CLI 真实项目构建与静态检查通过；尚未完成平台上
 - 用户实际构建 test388/playable-004：PNG+JPEG、quality=80，12 张图均压缩，输出 9 PNG / 3 JPEG，共 920,756 字节；TikTok ZIP 2,708,963，Google ZIP 2,708,601，AppLovin HTML 3,207,098 字节。报告大小、SHA-256 与两份 ZIP CRC 通过，图片尺寸保持。
 - 上述产物均未超体积限制；本轮未对运行画面、官方容器和有损画质进行验收。
 - 最终类型检查与全量回归 81/81 通过，含 JPEG 重编码及无体积收益时保留原图的测试。
+
+### 2026-10-30：Creator 2.4.15 隔离 CLI 实际构建
+
+- 使用 test2415 的 assets/settings 隔离副本；命令行须指定 platform=playable，宿主会将基础平台解析为 web-mobile。单独传 actualPlatform 会被命令行归一覆盖。未修改用户原工程。
+- 真实 release settings.js 使用无引号对象键，严格 JSON 读取失败；2.x adapter 改为 JSON5 解析纯数据对象，拒绝脚本表达式和尾随执行代码，不使用 eval/vm 执行项目脚本。
+- 修复后 CLI 退出码 0，TikTok ZIP 596,296 字节、21 文件，CRC/SHA-256/报告大小通过，无超限。产物在 .local/creator2415-cli-20261030-112227/build/playable/playable-tiktok；本轮未验证运行画面或官方容器。
+- 类型检查及完整回归 82/82 通过。Editor 全局 Builder 的临时平台/Schema 补丁不进入插件源码；cocos-pack 未生成、未修改。
+
+### 2026-10-30：Creator 2.4.15 编辑器内三渠道 WebP 构建
+
+- 为 2.x 插件携带独立 sharp-creator2（Sharp 0.28.3，N-API 3）；仍复用统一图片压缩逻辑，3.x 继续使用宿主 Sharp。无外部 Node 安装依赖。
+- 已在 Creator 自带 Node 14.16.0 中执行原生 WebP 编码，并更新全局 2.4.15 插件。
+- 通过当前编辑器 Builder API addBuildTask 发起 test2415 的 playable 构建，日志确认 Built playable successfully；三渠道使用 WebP quality=80，4 张图 21,489 → 5,230 字节。
+- 产物位于 D:/prj/test2415/build/playable 的 playable-tiktok、playable-google-ads、playable-applovin。检查三份报告大小/SHA-256、两份 ZIP 与 HTML 内嵌 ZIP CRC、图片 WebP 内容标识。
+- 完整回归 82/82 通过。本轮未验收游戏画面及官方广告容器；Builder 页面/Schema 的本地测试补丁不作为正式插件实现。
+
+- 后续官方预览暴露 cc.Game.EVENT_SHOW 与跨 bundle 内嵌 store 丢失两处启动问题；改用 cc.game.EVENT_SHOW 并通过页面共享 2.x store。修复后原有 82 项及新增跨 bundle 启动测试通过；仍需官方平台复测。
+
+- Creator 2 原生 main.js 的 setLoadingDisplay 依赖 splash / progress-bar span。ZIP 和单 HTML 模板共同引入 creator2-loading.ejs，3.x 单 HTML 不引入；已添加两种产物的节点契约检查。真实场景启动和官方预览仍需复测，静态/模拟测试通过不等同于运行验收。

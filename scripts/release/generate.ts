@@ -22,9 +22,15 @@ export async function generatePlugin(output: string, host = 'cli', creatorVersio
         ? { 'simple-build-target': './dist/config.cjs', profiles: { project: { channels: null } } }
         : { package_version: 2, contributions: { builder: './dist/config.cjs' } }) }
     : { name, version, description, license, type, contributes }, null, 2));
-  copyDependencies(host === 'creator' ? profile.externalDependencies.filter(name => name !== 'sharp') : profile.externalDependencies, projectRoot, output);
+  const dependencies = host === 'creator'
+    ? [...profile.externalDependencies.filter(name => name !== 'sharp'), ...(profile.bundledSharp ? [profile.bundledSharp] : [])]
+    : profile.externalDependencies;
+  copyDependencies(dependencies, projectRoot, output);
   // Smoke-test from the output itself; no dependency fallback into this source tree.
-  const nativeSmoke = host === 'creator' ? '' : `require(p+'/node_modules/sharp')({create:{width:2,height:2,channels:4,background:'#fff'}}).png().toBuffer().catch(e=>{console.error(e);process.exitCode=1})`;
+  const sharpDependency = host === 'creator' ? profile.bundledSharp : 'sharp';
+  const nativeSmoke = sharpDependency
+    ? `require(p+'/node_modules/${sharpDependency}')({create:{width:2,height:2,channels:4,background:'#fff'}}).webp({quality:80}).toBuffer().catch(e=>{console.error(e);process.exitCode=1})`
+    : '';
   execFileSync(process.execPath, ['-e', `const p=process.cwd(); require(p+'/dist/config.cjs'); require(p+'/dist/hooks.cjs'); ${nativeSmoke}`], { cwd: output, stdio: 'pipe', env: { ...process.env, NODE_PATH: '' } });
   const files = Object.fromEntries([...readFiles(output)].map(([name, data]) => [name, hash(data)]));
   fs.writeFileSync(path.join(output, releaseFile), JSON.stringify({ schemaVersion: 1, pluginVersion: version, host, profile: profile.id, nodeTarget: profile.nodeTarget, ...(profile.editorIntegration ? { editorIntegration: profile.editorIntegration } : {}), platform: process.platform, arch: process.arch, files }, null, 2));

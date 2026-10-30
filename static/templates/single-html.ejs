@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Playable</title><style><%- css %></style></head>
 <body><div id="GameDiv" cc_exact_fit_screen="true"><div id="Cocos3dGameContainer"><canvas id="GameCanvas" tabindex="0"></canvas></div></div>
+<% if (JSON.parse(manifest).kind === 'creator2') { %><%- include('creator2-loading.ejs') %><% } %>
 <script id="embedded-manifest" type="application/json"><%- manifest %></script>
 <script id="embedded-archive" data-encoding="<%= embeddedEncoding %>" type="application/octet-stream"><%- archive %></script>
 <script src="<%= sdkURL %>"></script>

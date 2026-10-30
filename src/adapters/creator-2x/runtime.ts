@@ -3,25 +3,28 @@ import type { EmbeddedStore } from '../../../runtime/embedded/store';
 import { installCreator2Assets, type Creator2Engine } from './embedded';
 export interface Creator2Manifest { scripts: string[]; engine: string; main: string }
 interface Game {
+  EVENT_SHOW: string;
   isPaused(): boolean; pause(): void; resume(): void;
   on(event: string, callback: () => void): void;
   run(options: unknown, callback: () => void): unknown;
 }
 declare global {
   interface Window {
-    cc?: Creator2Engine & { game: Game; Game: { EVENT_SHOW: string } };
+    cc?: Creator2Engine & { game: Game };
+    __playableCreator2Store?: EmbeddedStore;
     boot?: () => void;
     _CCSettings?: { jsList?: string[] };
     __startCreator2(manifest: Creator2Manifest): Promise<void>;
   }
 }
-let embedded: EmbeddedStore | undefined;
+// Channel runtime and single-HTML loader are separate bundles. Share their store on the page.
 export function prepareEmbedded(context: EmbeddedContext): Promise<void> {
-  embedded = context.store;
+  window.__playableCreator2Store = context.store;
   return Promise.resolve();
 }
 export function installStartup(context: StartupContext): void {
   window.__startCreator2 = async manifest => {
+    const embedded = window.__playableCreator2Store;
     try {
       await Promise.race([new Promise<void>(resolve => { context.api.onReady(resolve); }), context.failure]);
       const loadScript = async (name: string) => {
@@ -62,7 +65,7 @@ export function installStartup(context: StartupContext): void {
         else if (context.api.viewable && pausedByAd) { pausedByAd = false; cc.game.resume(); }
       };
       context.api.onPause(sync); context.api.onResume(sync);
-      cc.game.on(cc.Game.EVENT_SHOW, () => Promise.resolve().then(sync));
+      cc.game.on(cc.game.EVENT_SHOW, () => Promise.resolve().then(sync));
       const run = cc.game.run;
       // Scope the launch observer to this ad page; restore the original before invoking it.
       cc.game.run = function (options, callback) {

@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+const sharp = require('sharp-creator2') as typeof import('sharp');
 import path from 'node:path';
 import os from 'node:os';
 import JSZip from 'jszip';
+import { readCreator2Settings } from '../src/adapters/creator-2x/settings';
 import { generatePlugin } from '../scripts/release/generate';
 import { selectProfile } from '../scripts/release/profile';
 import { verifyFiles, readFiles } from '../scripts/release/files';
@@ -58,25 +60,50 @@ test('Creator 2 builds ZIP and single HTML from its own Web bootstrap with chann
   assert.ok(manifest.engines.creator.split(' || ').includes('2.4.0'));
   const config = require(path.join(plugin, 'dist/config.cjs'));
   assert.equal(config.extends, 'web-mobile');
+  const bundled = JSON.parse(fs.readFileSync(path.join(plugin, 'node_modules/sharp-creator2/package.json'), 'utf8'));
+  assert.deepEqual(bundled.binary.napi_versions, [3]);
   const build = path.join(root, 'web'); fs.mkdirSync(path.join(build, 'src'), { recursive: true });
-  fs.writeFileSync(path.join(build, 'src/settings.js'), 'window._CCSettings={"jsList":[]};');
+  fs.writeFileSync(path.join(build, 'src/settings.js'), 'window._CCSettings={platform:"playable",hasResourcesBundle:false,jsList:[]};');
   fs.writeFileSync(path.join(build, 'cocos2d-js-min.js'), 'window.cc={};');
   fs.writeFileSync(path.join(build, 'main.js'), 'window.boot=function(){};');
+  fs.mkdirSync(path.join(build, 'assets/native'), { recursive: true });
+  const pixels = Buffer.alloc(64 * 64 * 4);
+  let seed = 1234;
+  for (let i = 0; i < pixels.length; i += 4) {
+    for (let channel = 0; channel < 3; channel++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      pixels[i + channel] = seed >>> 24;
+    }
+    pixels[i + 3] = 200;
+  }
+  const texture = await sharp(pixels, { raw: { width: 64, height: 64, channels: 4 } }).png({ compressionLevel: 0 }).toBuffer();
+  fs.writeFileSync(path.join(build, 'assets/native/texture.png'), texture);
   const target = globalThis as typeof globalThis & { Editor?: unknown };
   const previous = target.Editor; t.after(() => { target.Editor = previous; });
   target.Editor = { Profile: { load: () => ({ getSelfData: () => ({ channels: {
-    tiktok: { enabled: true },
-    applovin: { enabled: true, storeUrl: 'https://example.com/store' },
+    tiktok: { enabled: true, imageCompression: 'webp', imageQuality: 80 },
+    applovin: { enabled: true, imageCompression: 'webp', imageQuality: 80, storeUrl: 'https://example.com/store' },
   } }) }) } };
+  // Windows locks loaded native binaries; reuse the test process backend so the temporary plugin can be removed.
+  const bundledSharpPath = require.resolve(path.join(plugin, 'node_modules/sharp-creator2'));
+  require.cache[bundledSharpPath] = require.cache[require.resolve('sharp-creator2')];
+  t.after(() => { delete require.cache[bundledSharpPath]; });
   const hooks = require(path.join(plugin, 'dist/hooks.cjs'));
   const reports = await hooks.deliverCreator2({ dest: build });
   assert.equal(reports.length, 2);
   const archive = await JSZip.loadAsync(fs.readFileSync(path.join(build, 'playable-tiktok/tiktok.zip')), { checkCRC32: true });
   assert.ok(archive.file('cocos2d-js-min.js'));
+  const packedImage = await archive.file('assets/native/texture.png')!.async('nodebuffer');
+  assert.equal((await sharp(packedImage).metadata()).format, 'webp');
+  assert.equal(reports[0].images.mode, 'webp');
   assert.match(await archive.file('index.js')!.async('string'), /__startCreator2/);
   assert.ok(!(await archive.file('index.html')!.async('string')).includes('mraid.js'));
   const html = fs.readFileSync(path.join(build, 'playable-applovin/applovin.html'), 'utf8');
   assert.match(html, /src="mraid.js"/);
+  for (const page of [html, await archive.file('index.html')!.async('string')]) {
+    assert.match(page, /id="splash"/);
+    assert.match(page, /class="progress-bar">\s*<span/);
+  }
   assert.match(html, /&quot;kind&quot;|"kind":"creator2"/);
   assert.ok(!html.includes('sf16-muse-va'));
   assert.equal(fs.readFileSync(path.join(build, 'main.js'), 'utf8'), 'window.boot=function(){};');
@@ -118,14 +145,14 @@ test('Creator 2 startup loads plugins before boot and coordinates visibility wit
   let paused = false, viewable = true;
   let onPause = () => {}, onResume = () => {};
   const run = (_options: unknown, callback: () => void) => { callback(); };
-  const game = { run, on() {}, pause() { paused = true; }, resume() { paused = false; }, isPaused: () => paused };
+  const game = { EVENT_SHOW: 'show', run, on(event: string) { assert.equal(event, 'show'); }, pause() { paused = true; }, resume() { paused = false; }, isPaused: () => paused };
   const windowMock: Record<string, any> = {};
   const documentMock = {
     createElement() { return { src: '', remove() {}, onload() {} }; },
     head: { appendChild(script: { src: string; onload(): void }) {
       scripts.push(script.src);
       if (script.src === './src/settings.js') windowMock._CCSettings = { jsList: ['plugin.js'] };
-      if (script.src === './cocos2d-js-min.js') windowMock.cc = { game, Game: { EVENT_SHOW: 'show' } };
+      if (script.src === './cocos2d-js-min.js') windowMock.cc = { game };
       if (script.src === './main.js') windowMock.boot = () => game.run({}, () => {});
       script.onload();
     } },
@@ -146,4 +173,41 @@ test('Creator 2 startup loads plugins before boot and coordinates visibility wit
   assert.equal(game.run, run);
   viewable = false; onPause(); assert.equal(paused, true);
   viewable = true; onResume(); assert.equal(paused, false);
+});
+
+
+test('Creator 2 release settings are parsed as data without executing JavaScript', () => {
+  assert.deepEqual(readCreator2Settings('window._CCSettings={platform:"playable",groupList:["default"],hasResourcesBundle:false,jsList:[]};'),
+    {platform:'playable',groupList:['default'],hasResourcesBundle:false,jsList:[]});
+  assert.deepEqual(readCreator2Settings('window._CCSettings={"jsList":[]};'),{jsList:[]});
+  assert.throws(()=>readCreator2Settings('window._CCSettings=[];'),/data object/);
+  assert.throws(()=>readCreator2Settings('window._CCSettings={x:(()=>{throw new Error("must not execute")})()};'));
+  assert.throws(()=>readCreator2Settings('window._CCSettings={}; process.exit(1);'));
+});
+
+test('Creator 2 independently bundled HTML loader and channel runtime share the embedded store', async () => {
+  const { buildSync } = await import('esbuild');
+  const { runInNewContext } = await import('node:vm');
+  const sandbox: any = { window: {}, console, Promise, URL, Blob, Uint8Array };
+  for (const name of ['HtmlLoader', 'ChannelRuntime']) {
+    const output = buildSync({ entryPoints: [path.resolve('src/adapters/creator-2x/runtime.ts')], bundle: true,
+      platform: 'browser', format: 'iife', globalName: name, write: false });
+    runInNewContext(output.outputFiles[0].text, sandbox);
+  }
+  const loaded: string[] = [], errors: unknown[] = [];
+  let booted = false;
+  const game = { EVENT_SHOW: 'game_on_show', on() {}, isPaused: () => false, pause() {}, resume() {},
+    run(_options: unknown, callback: () => void) { callback(); } };
+  const store = { async script(name: string) {
+    loaded.push(name);
+    if (name === 'engine.js') sandbox.window.cc = { game, loader: { downloader: { extMap: {} }, addDownloadHandlers() {} } };
+    if (name === 'main.js') sandbox.window.boot = () => { booted = true; game.run({}, () => {}); };
+  } };
+  sandbox.ChannelRuntime.installStartup({ api: { viewable: true, onReady(fn: () => void) { fn(); }, onPause() {}, onResume() {} },
+    failure: new Promise(() => {}), reportError: (error: unknown) => errors.push(error) });
+  await sandbox.HtmlLoader.prepareEmbedded({ store });
+  await sandbox.window.__startCreator2({ scripts: ['src/settings.js', 'engine.js', 'main.js'], engine: 'engine.js', main: 'main.js' });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(loaded, ['src/settings.js', 'engine.js', 'main.js']);
+  assert.equal(booted, true);
 });
