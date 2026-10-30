@@ -53,6 +53,8 @@ test('Creator 2 builds ZIP and single HTML from its own Web bootstrap with chann
   const plugin = path.join(root, 'plugin');
   await generatePlugin(plugin, 'creator', '2.4.15');
   const release = verifyFiles(readFiles(plugin));
+  assert.equal(fs.existsSync(path.join(plugin, 'docs')), false);
+  assert.equal(fs.readFileSync(path.join(plugin, 'README.md'), 'utf8'), fs.readFileSync(path.resolve('README.md'), 'utf8'));
   assert.equal(release.editorIntegration, 'simple-build-target');
   const manifest = JSON.parse(fs.readFileSync(path.join(plugin, 'package.json'), 'utf8'));
   assert.equal(manifest['simple-build-target'], './dist/config.cjs');

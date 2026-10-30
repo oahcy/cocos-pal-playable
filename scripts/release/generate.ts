@@ -10,7 +10,7 @@ export async function generatePlugin(output: string, host = 'cli', creatorVersio
   if (fs.existsSync(output)) throw new Error('Output already exists; choose a fresh directory: ' + output);
   fs.mkdirSync(output, { recursive: true });
   await compilePlugin(output, profile);
-  for (const name of ['static', 'docs']) fs.cpSync(path.join(projectRoot, name), path.join(output, name), { recursive: true });
+  for (const name of (host === 'creator' ? ['static'] : ['static', 'docs'])) fs.cpSync(path.join(projectRoot, name), path.join(output, name), { recursive: true });
   fs.mkdirSync(path.join(output, 'runtime'));
   fs.copyFileSync(path.join(projectRoot, 'runtime/playable.d.ts'), path.join(output, 'runtime/playable.d.ts'));
   fs.copyFileSync(path.join(projectRoot, 'README.md'), path.join(output, 'README.md'));
