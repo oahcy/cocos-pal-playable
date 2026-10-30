@@ -192,3 +192,19 @@ Google Ads：CLI 真实项目构建与静态检查通过；尚未完成平台上
 - 后续官方预览暴露 cc.Game.EVENT_SHOW 与跨 bundle 内嵌 store 丢失两处启动问题；改用 cc.game.EVENT_SHOW 并通过页面共享 2.x store。修复后原有 82 项及新增跨 bundle 启动测试通过；仍需官方平台复测。
 
 - Creator 2 原生 main.js 的 setLoadingDisplay 依赖 splash / progress-bar span。ZIP 和单 HTML 模板共同引入 creator2-loading.ejs，3.x 单 HTML 不引入；已添加两种产物的节点契约检查。真实场景启动和官方预览仍需复测，静态/模拟测试通过不等同于运行验收。
+
+### 2026-10-30：Creator 2 Windows 原生图片后端裁剪实验（已由宿主复用替代）
+
+- Creator 2.x 生成插件时仅对 Windows Sharp 0.28.3 启用裁剪，其他平台保留完整依赖；CLI 与 Creator 3.x 不应用该规则。
+- 复制时跳过 src、install、binding.gyp、Sharp README 及 vendor 下 include/lib；保留 JS、build/Release 原生模块与 DLL、平台/版本元数据、LICENSE 和 THIRD-PARTY-NOTICES。跳过重复 DLL 前校验两份内容一致；未进一步裁剪传递依赖。
+- 插件根 README 保留、docs 排除。生成步骤在独立子进程中实际执行 PNG/JPEG/WebP 编码，再生成发布文件哈希。
+- Windows x64 2.4.15 插件 ZIP 10,619,175 字节，解压 27,123,895 字节；ZIP 与完整文件哈希校验通过。使用 Creator 自带 Node 14.16 对项目 256x256 PNG 编码，PNG 4,013 / JPEG 4,942 / WebP 3,424 字节，尺寸均保持。
+- 类型检查与完整回归 83/83 通过。输出仅在 .local/creator2415-trimmed-20261030-142852（及同名 ZIP）；未更新全局插件、未生成到 cocos-pack、未提交。本轮验证压缩功能，不代表官方广告容器验收。
+
+### 2026-10-30：Creator 2 复用宿主 Sharp
+
+- 确认本机 Creator 2.4.15 自带 resources/utils/sharp 0.28.3。通过 Editor.App.path 或 Editor.url("app://") 定位相邻 utils/sharp，不使用未注册的 utils:// 协议，不修改全局模块路径。缺失宿主库时明确报错，压缩关闭时不加载后端。
+- 移除 sharp-creator2 开发依赖（33 个配套包）、2.x bundledSharp 配置与未提交的裁剪实现；CLI 和 3.x 后端保持原逻辑，SDK/onReady 逻辑未修改。
+- 生成的 2.4.15 插件无 node_modules，README 保留、docs 排除；ZIP 176,667 字节、解压 534,938 字节，发布文件哈希与 ZIP 校验通过。产物 .local/creator2415-host-final-20261030-152836.zip。
+- 已更新全局 2.4.15 测试插件并删除该插件旧 node_modules。编辑器任务成功，三渠道 WebP quality=80，4 张图仍为 21,489 → 5,230 字节；TikTok 580,306 / Google 579,938 / AppLovin 773,046 字节，报告哈希及 ZIP/内嵌 ZIP CRC 通过。
+- 完整回归 83/83 通过；PNG/JPEG/WebP 的宿主编码已在此前独立运行时探测通过。仅确认本机 2.4.15 Windows，其他历史版本、macOS 仍待宿主实测；未生成到 cocos-pack、未提交。

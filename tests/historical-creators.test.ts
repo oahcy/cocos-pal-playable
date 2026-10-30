@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-const sharp = require('sharp-creator2') as typeof import('sharp');
+import sharp from 'sharp';
 import path from 'node:path';
 import os from 'node:os';
 import JSZip from 'jszip';
@@ -62,8 +62,7 @@ test('Creator 2 builds ZIP and single HTML from its own Web bootstrap with chann
   assert.ok(manifest.engines.creator.split(' || ').includes('2.4.0'));
   const config = require(path.join(plugin, 'dist/config.cjs'));
   assert.equal(config.extends, 'web-mobile');
-  const bundled = JSON.parse(fs.readFileSync(path.join(plugin, 'node_modules/sharp-creator2/package.json'), 'utf8'));
-  assert.deepEqual(bundled.binary.napi_versions, [3]);
+  assert.equal(fs.existsSync(path.join(plugin, 'node_modules')), false);
   const build = path.join(root, 'web'); fs.mkdirSync(path.join(build, 'src'), { recursive: true });
   fs.writeFileSync(path.join(build, 'src/settings.js'), 'window._CCSettings={platform:"playable",hasResourcesBundle:false,jsList:[]};');
   fs.writeFileSync(path.join(build, 'cocos2d-js-min.js'), 'window.cc={};');
@@ -82,14 +81,14 @@ test('Creator 2 builds ZIP and single HTML from its own Web bootstrap with chann
   fs.writeFileSync(path.join(build, 'assets/native/texture.png'), texture);
   const target = globalThis as typeof globalThis & { Editor?: unknown };
   const previous = target.Editor; t.after(() => { target.Editor = previous; });
-  target.Editor = { Profile: { load: () => ({ getSelfData: () => ({ channels: {
+  // Simulate Editor resources without copying or loading native binaries from the temporary fixture.
+  const hostSharp = path.join(root, 'host/utils/sharp');
+  fs.mkdirSync(hostSharp, { recursive: true });
+  fs.writeFileSync(path.join(hostSharp, 'package.json'), JSON.stringify({ main: require.resolve('sharp') }));
+  target.Editor = { url: () => path.join(root, 'host/app.asar'), Profile: { load: () => ({ getSelfData: () => ({ channels: {
     tiktok: { enabled: true, imageCompression: 'webp', imageQuality: 80 },
     applovin: { enabled: true, imageCompression: 'webp', imageQuality: 80, storeUrl: 'https://example.com/store' },
   } }) }) } };
-  // Windows locks loaded native binaries; reuse the test process backend so the temporary plugin can be removed.
-  const bundledSharpPath = require.resolve(path.join(plugin, 'node_modules/sharp-creator2'));
-  require.cache[bundledSharpPath] = require.cache[require.resolve('sharp-creator2')];
-  t.after(() => { delete require.cache[bundledSharpPath]; });
   const hooks = require(path.join(plugin, 'dist/hooks.cjs'));
   const reports = await hooks.deliverCreator2({ dest: build });
   assert.equal(reports.length, 2);

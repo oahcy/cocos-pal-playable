@@ -14,7 +14,7 @@
 | 383_384 | 现代独立平台，Node 14.16 输出 | Application 类协议 |
 | 385_389 | 现代独立平台，Node 20 输出 | Application 类协议 |
 
-2.x 生成的 package.json 使用 simple-build-target 和项目 profiles；3.x 使用 contributions.builder 与 package_version: 2。两者均声明 name=playable、version、engines.creator 和 editor。旧 Node 的语法由构建目标转换，3.x 原生图片处理复用宿主 sharp；2.x 随插件携带 N-API 3 的 sharp-creator2，在编辑器进程内执行压缩，不依赖外部 Node。图片压缩默认关闭，具体宿主仍需实际验收。
+2.x 生成的 package.json 使用 simple-build-target 和项目 profiles；3.x 使用 contributions.builder 与 package_version: 2。两者均声明 name=playable、version、engines.creator 和 editor。旧 Node 的语法由构建目标转换，3.x 原生图片处理复用宿主 sharp；2.x 通过 Editor.App.path 或 Editor.url("app://") 定位 resources/utils/sharp，复用编辑器工具目录的 Sharp，不携带原生依赖或依赖外部 Node；缺失时明确提示关闭压缩或检查安装。已实测本机 2.4.15，其他 2.x 和 macOS 仍需验证。图片压缩默认关闭，具体宿主仍需实际验收。
 
 ## 共用与隔离
 

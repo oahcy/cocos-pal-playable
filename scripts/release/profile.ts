@@ -6,7 +6,6 @@ export interface Profile {
   editorIntegration?: 'playable-platform' | 'simple-build-target';
   applicationAdapter: string;
   artifactDirectory?: string;
-  bundledSharp?: string;
 }
 interface CreatorPlatformGroup {
   name: string; from: string; to: string; profile: string | null; verifiedVersions: string[];

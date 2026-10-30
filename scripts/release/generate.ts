@@ -23,13 +23,13 @@ export async function generatePlugin(output: string, host = 'cli', creatorVersio
         : { package_version: 2, contributions: { builder: './dist/config.cjs' } }) }
     : { name, version, description, license, type, contributes }, null, 2));
   const dependencies = host === 'creator'
-    ? [...profile.externalDependencies.filter(name => name !== 'sharp'), ...(profile.bundledSharp ? [profile.bundledSharp] : [])]
+    ? profile.externalDependencies.filter(name => name !== 'sharp')
     : profile.externalDependencies;
   copyDependencies(dependencies, projectRoot, output);
   // Smoke-test from the output itself; no dependency fallback into this source tree.
-  const sharpDependency = host === 'creator' ? profile.bundledSharp : 'sharp';
+  const sharpDependency = host === 'creator' ? undefined : 'sharp';
   const nativeSmoke = sharpDependency
-    ? `require(p+'/node_modules/${sharpDependency}')({create:{width:2,height:2,channels:4,background:'#fff'}}).webp({quality:80}).toBuffer().catch(e=>{console.error(e);process.exitCode=1})`
+    ? `Promise.all(['png','jpeg','webp'].map(format=>require(p+'/node_modules/${sharpDependency}')({create:{width:2,height:2,channels:4,background:'#fff'}})[format]({quality:80}).toBuffer())).catch(e=>{console.error(e);process.exitCode=1})`
     : '';
   execFileSync(process.execPath, ['-e', `const p=process.cwd(); require(p+'/dist/config.cjs'); require(p+'/dist/hooks.cjs'); ${nativeSmoke}`], { cwd: output, stdio: 'pipe', env: { ...process.env, NODE_PATH: '' } });
   const files = Object.fromEntries([...readFiles(output)].map(([name, data]) => [name, hash(data)]));

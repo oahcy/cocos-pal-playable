@@ -81,8 +81,7 @@
       ],
       "editorIntegration": "simple-build-target",
       "applicationAdapter": "creator-2x",
-      "artifactDirectory": "playable_232_234",
-      "bundledSharp": "sharp-creator2"
+      "artifactDirectory": "playable_232_234"
     },
     "creator-platform-240_2415": {
       "adapter": "creator-2x",
@@ -94,8 +93,7 @@
       ],
       "editorIntegration": "simple-build-target",
       "applicationAdapter": "creator-2x",
-      "artifactDirectory": "playable_240_2415",
-      "bundledSharp": "sharp-creator2"
+      "artifactDirectory": "playable_240_2415"
     }
   },
   "creatorVersions": {
