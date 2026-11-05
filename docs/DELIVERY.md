@@ -49,7 +49,9 @@ npm run single-html -- <试玩构建目录> 80 base122
 npm run preview -- <ZIP或HTML路径> --mock-sdk
 ```
 
-single-html 命令省略质量参数时保留原图。预览只有显式传入 --mock-sdk 才模拟 SDK，且不修改产物；正式环境缺少 SDK 会报错。
+single-html 命令省略质量参数时保留原图。预览显式传入 --mock-sdk 时模拟渠道 SDK，传入 --mock-api 时注入统一 MockAdapter，两者互斥。统一 Mock 要求新插件生成的 runtime 标记及工厂入口；旧产物可继续使用 --mock-sdk。服务仅修改响应，产物保持原样。
+
+npm run verify:preview -- "产物.zip或html" 使用统一 Mock 和本机 Chrome 自动验收；可传 --browser=msedge 和 --timeout=30000。验证等待场景加载和后续两帧引擎运行，脚本错误、资源失败和超时使命令退出 1，通过退出 0。验证范围是本地启动，官方渠道行为仍按各渠道要求验收。
 
 ## 图片压缩
 

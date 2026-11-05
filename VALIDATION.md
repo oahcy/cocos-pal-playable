@@ -233,3 +233,12 @@ Google Ads：CLI 真实项目构建与静态检查通过；尚未完成平台上
 - 30 份实际产物在本地浏览器配合模拟渠道 SDK 完成场景加载，等待场景存在及两帧渲染后记录结果；页面未捕获 error 日志。2.x 显示 Hello World，3.x 显示骑士场景。本地就绪探针只存在于预览响应，未写入交付产物。没有执行官方平台上传、实际商店跳转、真机或构建面板验收。
 - 初次并行启动测试有共享布局/图形缓存警告。3.7.0 一次重试未执行 Playable 钩子，宿主仍返回成功；以旧报告识别出未生成新交付包，串行重跑后钩子及新产物通过。3.8.6 隔离工程改用该宿主自带模板设置，消除旧模板设置迁移干扰。未修改 Editor、引擎或 CLI。
 - Node 22 类型检查、85/85 自动测试通过，含版本边界、无 btoa 编码、受限内存编解码和命名模块校验回归。产物与原始日志位于 .local/creator-matrix-20261105-143100，各工程 build/playable/playable-<渠道> 下。未生成到 cocos-pack。
+
+### 2026-11-05：统一 Mock 预览和自动启动验收
+
+- Creator 2、Creator 3 ZIP 模板和单 HTML 模板统一添加 data-playable-runtime。公共 runtime 在 createPlayable 前接受可选 Adapter 工厂；Mock 实现和控制器只由本地预览服务编译提供。--mock-api 按 runtime 标记注入，不要求 SDK script 存在；已有 --mock-sdk 模式保留，两者互斥。
+- 新增 verify:preview，使用 playwright-core 开发依赖驱动本机 Chrome/Edge。等待场景存在及之后两帧引擎计数增加，脚本异常、console.error、失败资源请求、HTTP 错误和超时返回失败；结束时关闭浏览器及本地服务。
+- 更新本机 2.4.15、3.5.2、3.7.3 全局测试插件，通过真实 Creator 构建新产物。六份代表产物（各版 TikTok ZIP、AppLovin Base64 单 HTML）通过 Chrome 自动验收。预览前后文件 SHA-256 一致。
+- 以 3.7.3 新单 HTML 中的 SystemJS 替换为此前实际失败的 warmup 加载器，自动验收准确报告 createScript is missing；删去 ZIP 的 settings.json 报 HTTP 404；无场景夹具在 3000 ms 内报启动超时。三个负例均返回 1，通过产物返回 0。
+- 三个真实单 HTML 验证手动 ready、初始隐藏、展示后启动、隐藏暂停及展示恢复。下载与重复 finish 的记录为 openStore、finish 各一次。模拟 SDK 状态与资源/引擎加载分开验证，未执行官方渠道或真机验收。
+- 类型检查与 88/88 自动测试通过。测试目录为 .local/unified-preview-20261105-163225。Mock 控制和注入不修改输入产物；旧包缺少标记时明确提示重新构建，旧 --mock-sdk 入口仍可使用。未生成到 cocos-pack。

@@ -45,3 +45,21 @@ export function prepareMockPreview(html: string) {
   if (!Object.prototype.hasOwnProperty.call(mocks, channel)) throw new Error('No preview mock for channel: ' + channel);
   return { html: output, sdk: mocks[channel], channel };
 }
+
+/** Inject before the declared runtime; SDK imports are optional in this mode. */
+export function prepareAPIMockPreview(html: string): string {
+  let runtimes = 0;
+  const output = html.replace(/<script\b([^>]*)>[\s\S]*?<\/script\s*>/gi, (tag, attributes: string) => {
+    const source = /(?:^|\s)src\s*=\s*(["'])([^"']+)\1/i.exec(attributes);
+    if (source && channelIds.some(id => getChannel(id).sdkURL === source[2])) return '';
+    if (/(?:^|\s)data-playable-runtime(?=\s|=|$)/i.test(attributes)) {
+      runtimes++;
+      return '<script src="/__preview/mock-api.js"></script>\n' + tag;
+    }
+    return tag;
+  });
+  if (runtimes !== 1) {
+    throw new Error('Unified Mock requires exactly one data-playable-runtime script; rebuild this artifact with the current plugin');
+  }
+  return output;
+}

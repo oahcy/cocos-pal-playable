@@ -202,7 +202,7 @@ test('compiled build hook shares ZIP packaging, preserves SDK, and isolates form
   assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'playable-tiktok', 'report.json'), 'utf8')).packageFormat, 'directory-zip');
   const html = fs.readFileSync(report.archive, 'utf8');
   assert.ok(html.includes('src="' + channel.sdkURL + '"'));
-  assert.ok(html.includes('<script>channelSDK()</script>'));
+  assert.ok(html.includes('<script data-playable-runtime>channelSDK()</script>'));
   assert.equal(html.includes('offline-preview'), false);
   assert.throws(() => readOptions({ packages: { playable: { outputFormat: 'bad' as never } } }), /Unsupported outputFormat/);
   await assert.rejects(packageBuild(root, 'tiktok', { outputFormat: 'bad' as never }), /Unsupported outputFormat/);

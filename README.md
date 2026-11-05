@@ -49,10 +49,17 @@ Creator 复用编辑器自带 sharp；CLI 独立插件携带自己的依赖。�
 - [验证结果与未完成项](VALIDATION.md)
 
 ```powershell
-npm run preview -- <ZIP或HTML路径> --mock-sdk
+npm run preview -- "产物.zip" --mock-api
+npm run verify:preview -- "产物.html" --browser=chrome --timeout=30000
 ```
 
-预览仅在显式传入 --mock-sdk 时模拟 SDK，不修改交付文件。按钮和结束 UI 由业务实现，下载点击调用 playable.openStore()。
+统一 Mock 通过真实 runtime 的 Adapter 工厂注入，ZIP 和单 HTML 共用；要求产物由当前插件生成，包含 data-playable-runtime 标记和工厂入口。SystemJS、内嵌资源与 Creator 启动适配继续执行产物代码。预览仅修改本地 HTTP 响应。
+
+自动验收使用本机已安装的 Chrome，也可传 --browser=msedge 使用 Edge。它等待真实场景和后续两帧引擎运行，捕获脚本错误、HTTP/资源失败及超时，成功退出 0，失败退出 1。playwright-core 仅为开发依赖。
+
+控制台可调用 window.__playablePreview.setViewable(false) 隐藏容器，传 true 恢复；调用 window.__playablePreview.setMuted(true) 静音，传 false 解除。下载和结束调用记录在 window.__playablePreview.calls。预览 URL 附加 ?ready=manual&viewable=false 可模拟未就绪且初始隐藏，再调用 window.__playablePreview.ready() 和 setViewable(true) 启动。
+
+原渠道 SDK Mock 仍使用 npm run preview -- "产物.zip" --mock-sdk，适用于渠道接口映射检查和旧产物。两种 Mock 模式互斥。按钮和结束 UI 由业务实现，下载点击调用 playable.openStore()。
 
 ## 文件职责
 

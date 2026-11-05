@@ -1,40 +1,14 @@
-import fs from 'node:fs';
-import http from 'node:http';
-import JSZip from 'jszip';
-import { prepareMockPreview } from './preview-sdk';
-const archive = process.argv[2];
-if (!archive) throw new Error('Usage: npx tsx scripts/preview.ts <playable.zip|playable.html> [--mock-sdk]');
-const mock = process.argv.includes('--mock-sdk');
-const port = Number(process.argv.find(arg => arg.startsWith('--port='))?.slice(7) || 0);
-if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid preview port');
-const types: Record<string, string> = { html: 'text/html', js: 'application/javascript', json: 'application/json', css: 'text/css',
-  png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', wasm: 'application/wasm', ttf: 'font/ttf', mp3: 'audio/mpeg', ogg: 'audio/ogg' };
-(async () => {
-  const input = fs.readFileSync(archive);
-  const html = /\.html$/i.test(archive) ? input : undefined;
-  const zip = html ? undefined : await JSZip.loadAsync(input);
-  const index = html?.toString() ?? await zip?.file('index.html')?.async('string');
-  if (index === undefined) throw new Error('Preview archive is missing index.html');
-  const preview = mock ? prepareMockPreview(index) : undefined;
-  const server = http.createServer(async (req, res) => {
-    try {
-      const name = decodeURIComponent(new URL(req.url || "/", 'http://localhost').pathname).slice(1) || 'index.html';
-      res.setHeader('Cache-Control', 'no-store');
-      if (preview && name === '__preview/sdk.js') {
-        res.setHeader('Content-Type', 'application/javascript');
-        res.end(preview.sdk);
-        return;
-      }
-      const entry = zip?.file(name);
-      if (!entry && !(html && name === 'index.html')) { res.writeHead(404); res.end('Not found'); return; }
-      let data = html && name === 'index.html' ? html : await entry!.async('nodebuffer');
-      if (preview && name === 'index.html') data = Buffer.from(preview.html);
-      res.setHeader('Content-Type', (types[name.split('.').pop() || ''] || 'application/octet-stream'));
-      res.end(data);
-    } catch (error) { res.writeHead(400); res.end('Invalid request'); }
+import { startPreview } from './preview/server';
+
+async function main() {
+  const [archive, ...args] = process.argv.slice(2);
+  if (!archive) throw new Error('Usage: npm run preview -- <playable.zip|playable.html> [--mock-api|--mock-sdk] [--port=0]');
+  const preview = await startPreview(archive, {
+    mockAPI: args.includes('--mock-api'),
+    mockSDK: args.includes('--mock-sdk'),
+    port: Number(args.find(arg => arg.startsWith('--port='))?.slice(7) || 0),
   });
-  server.listen(port, '127.0.0.1', () => {
-    console.log('Preview: http://127.0.0.1:' + (server.address() as import('node:net').AddressInfo).port);
-    console.log(preview ? `SDK mock: ${preview.channel}; preview only, artifact unchanged.` : 'Using official SDK.');
-  });
-})().catch(error => { console.error(error); process.exitCode = 1; });
+  console.log('Preview: ' + preview.url);
+  console.log('Mode: ' + preview.mode);
+}
+void main().catch(error => { console.error(error); process.exitCode = 1; });

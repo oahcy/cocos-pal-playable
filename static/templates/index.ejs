@@ -19,7 +19,7 @@
 <% if (sdkPlacement !== 'head') { %>
   <script src="<%= sdkURL %>"></script>
 <% } %>
-  <script src="./playable-runtime.js"></script>
+  <script data-playable-runtime src="./playable-runtime.js"></script>
 <% if (polyfillsURL) { %>
   <script src="<%= polyfillsURL %>"></script>
 <% } %>

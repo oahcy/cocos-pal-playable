@@ -22,7 +22,8 @@
     "preview": "tsx scripts/preview.ts",
     "single-html": "tsx scripts/single-html.ts",
     "plugin": "tsx scripts/plugin.ts",
-    "pack:cocos": "tsx scripts/cocos-pack.ts"
+    "pack:cocos": "tsx scripts/cocos-pack.ts",
+    "verify:preview": "tsx scripts/verify-preview.ts"
   },
   "contributes": {
     "builder": {
@@ -41,6 +42,7 @@
     "@types/ejs": "3.1.5",
     "@types/node": "22.20.4",
     "esbuild": "0.25.5",
+    "playwright-core": "1.64.1",
     "sharp": "0.32.6",
     "tsx": "4.23.15",
     "typescript": "5.9.3"
