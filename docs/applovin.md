@@ -20,3 +20,11 @@ npm run preview -- <applovin.html> --mock-sdk
 
 官方验证入口及规范：https://p.applov.in/playablePreview?create=1
 先验证官方网页预览，再使用 AppLovin Playable Preview App 验证；本地报告不代表官方验收。
+
+## 待办：Playable Analytics
+
+暂不接入 `trackEvent`，不改变当前启动、交互和下载跳转流程；目前不提供挑战进度、成功/失败等 Analytics 数据。
+
+后续增加可选 `playable.trackEvent`，由 AppLovin adapter 检查容器的 `ALPlayableAnalytics` 并转发官方预定义事件。事件名、顺序和调用时机按官方规范实现；不能假定生命周期事件会自动上报，也不能把 SDK ready、`finish()` 分别直接等同于内容可交互或结束页展示。
+
+官方文档：https://support.applovin.com/en/growth/promoting-your-apps/welcome-to-applovin/playable-analytics-integration

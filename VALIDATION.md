@@ -208,3 +208,18 @@ Google Ads：CLI 真实项目构建与静态检查通过；尚未完成平台上
 - 生成的 2.4.15 插件无 node_modules，README 保留、docs 排除；ZIP 176,667 字节、解压 534,938 字节，发布文件哈希与 ZIP 校验通过。产物 .local/creator2415-host-final-20261030-152836.zip。
 - 已更新全局 2.4.15 测试插件并删除该插件旧 node_modules。编辑器任务成功，三渠道 WebP quality=80，4 张图仍为 21,489 → 5,230 字节；TikTok 580,306 / Google 579,938 / AppLovin 773,046 字节，报告哈希及 ZIP/内嵌 ZIP CRC 通过。
 - 完整回归 83/83 通过；PNG/JPEG/WebP 的宿主编码已在此前独立运行时探测通过。仅确认本机 2.4.15 Windows，其他历史版本、macOS 仍待宿主实测；未生成到 cocos-pack、未提交。
+
+### 2026-11-02：Creator 3.7.3 / test373 命令行验证受平台准入阻挡
+
+- 使用 D:/creator/CocosCreator-v3.7.3-win-ui-102316，工程 D:/prj/test373；3.x 启动参数为 --project，不是 2.x 的 --path。
+- 从当前源码生成 creator-platform-360_374 插件，配置 TikTok、Google Ads、AppLovin，WebP quality=80，商店链接为测试占位。先验证项目扩展，再改装全局 builtin-extensions/3.7.3/playable，未改编辑器源码、白名单或引擎。
+- 两种安装方式均显示 Package playable enable / register pkg playable，但未出现 internalRegister playable；随后 Can not find bundle config with platform playable，PluginManager.getOptionsByPlatform 抛 Cannot convert undefined or null to object，CLI 退出 34。
+- 失败位于平台配置检查，尚未进入引擎、资源和交付打包，不能标为 3.7.3 实测通过。需要先确认/开放该客户端的 playable 平台准入。
+- 配置、生成插件及启动日志保留于 .local/creator373-verify-20261102-100325；测试插件留在全局 3.7.3 目录，项目中的本次临时重复安装已移除。未更新 cocos-pack、未提交。
+
+### 2026-11-02：Creator 2.4.15 / test2415 再次实际构建
+
+- 使用 Creator/2.4.15/CocosCreator.exe --path D:/prj/test2415 --build "platform=playable;buildPath=./build;debug=false;sourceMaps=false;md5Cache=false;encryptJs=false;embedWebDebugger=false"。日志确认 Built playable successfully。
+- 三渠道均 WebP quality=80，压缩后端明确为 Creator utils/sharp（宿主 Node 14.16.0）；无需随插件携带原生库。
+- TikTok ZIP 580,341 字节，Google ZIP 579,973 字节，AppLovin Base122 HTML 773,086 字节。两份 ZIP、HTML 内嵌 ZIP CRC、报告大小与 SHA-256、WebP 内容标识通过。
+- 产物在 D:/prj/test2415/build/playable 的三个 playable-<渠道> 目录，独立日志在 .local/creator2415-recheck-*；本轮未验证官方广告容器或真机交互。无功能代码修改，未更新 cocos-pack、未提交。
