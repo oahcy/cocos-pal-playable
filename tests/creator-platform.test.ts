@@ -28,8 +28,8 @@ test('independent platform sets browser compilation without changing its platfor
   hooks.onBeforeCompressSettings(options, result);
   assert.equal(options.platform, 'playable');
   assert.equal(options.appTemplateData.showFPS, false);
-  assert.deepEqual(options.buildEngineParam, { split: false, assetURLFormat: 'runtime-resolved' });
-  assert.deepEqual(options.buildScriptParam, { flags: { WEBGPU: false }, system: { preset: 'web' } });
+  assert.deepEqual(options.buildEngineParam, { platform: 'HTML5', split: false, assetURLFormat: 'runtime-resolved' });
+  assert.deepEqual(options.buildScriptParam, { platform: 'HTML5', flags: { WEBGPU: false }, system: { preset: 'web' } });
   assert.deepEqual(options.includeModules, ['gfx-webgl']);
   assert.equal(result.settings.screen.orientation, 'auto');
   assert.equal(result.staticsInfo?.orientation, 'landscape');

@@ -1,24 +1,19 @@
 import { applyFixedPlatformOptions } from '../creator-shared/fixed-options';
-import path from 'node:path';
+import { rebuildBrowserLoader } from '../creator-shared/browser-loader';
 import { selectedChannels } from '../creator-shared/selection';
 import { deliverCreatorChannels, validateDeliveryOptions, type CreatorOptions, type CreatorResult } from '../creator-shared/delivery';
 
 interface Options extends CreatorOptions {
   debug?: boolean;
   appTemplateData: { showFPS: boolean };
-  buildEngineParam: { split?: boolean; assetURLFormat?: string };
-  buildScriptParam: { system?: { preset: string }; flags: Record<string, boolean>; hotModuleReload?: boolean };
+  buildEngineParam: { platform?: string; split?: boolean; assetURLFormat?: string };
+  buildScriptParam: { platform?: string; system?: { preset: string }; flags: Record<string, boolean>; hotModuleReload?: boolean };
   includeModules: string[];
 }
 interface Result extends CreatorResult {
   settings: { screen: { orientation?: string }; assets: { server?: string; remoteBundles?: string[] } };
   staticsInfo?: { orientation?: string };
 }
-declare const Editor: { App: { path: string } };
-interface ModuleSystem {
-  build(options: { out: string; sourceMap: boolean; minify: boolean; platform: string; hmr: boolean }): Promise<unknown>;
-}
-
 export const throwError = true;
 function settings(options: CreatorOptions) {
   if (options.platform !== 'playable') throw new Error('Playable platform adapter requires platform=playable');
@@ -31,6 +26,10 @@ export function onBeforeInit(options: CreatorOptions) {
 }
 export function onAfterInit(options: Options, _result: Result) {
   options.appTemplateData.showFPS = false;
+  // 3.8.6 initializes these compiler options to INVALID_PLATFORM.
+  // Set the HTML5 target explicitly for both project scripts and engine code.
+  options.buildEngineParam.platform = 'HTML5';
+  options.buildScriptParam.platform = 'HTML5';
   options.buildEngineParam.split = false;
   options.buildEngineParam.assetURLFormat = 'runtime-resolved';
   // Preserve host orientation and statistics; channel settings belong to delivery only.
@@ -53,10 +52,7 @@ export function onBeforeCompressSettings(_options: Options, result: Result) {
  */
 export async function onBeforeCopyBuildTemplate(options: Options, result: CreatorResult) {
   settings(options);
-  const output = result.paths.systemJs;
-  if (!output) throw new Error('Creator Web SystemJS loader is missing');
-  const moduleSystem = require(path.join(Editor.App.path, 'node_modules/@cocos/module-system')) as ModuleSystem;
-  await moduleSystem.build({ out: output, sourceMap: false, minify: !options.debug, platform: 'web-mobile', hmr: false });
+  await rebuildBrowserLoader(result, options.debug);
 }
 // Creator's shared stages generate application.js, settings, import map and assets.
 // This platform supplies the final HTML/JS/CSS and channel SDK through the shared delivery layer.

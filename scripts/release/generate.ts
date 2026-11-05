@@ -20,7 +20,7 @@ export async function generatePlugin(output: string, host = 'cli', creatorVersio
     ? { name: 'playable', version, description, license, editor: profile.editor, engines: { creator: profile.editor }, title: 'Playable',
       ...(profile.editorIntegration === 'simple-build-target'
         ? { 'simple-build-target': './dist/config.cjs', profiles: { project: { channels: null } } }
-        : { package_version: 2, contributions: { builder: './dist/config.cjs' } }) }
+        : { package_version: 2, creator: { builder: { internal: true, platform: true } }, contributions: { builder: './dist/config.cjs' } }) }
     : { name, version, description, license, type, contributes }, null, 2));
   const dependencies = host === 'creator'
     ? profile.externalDependencies.filter(name => name !== 'sharp')

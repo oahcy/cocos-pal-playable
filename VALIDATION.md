@@ -223,3 +223,13 @@ Google Ads：CLI 真实项目构建与静态检查通过；尚未完成平台上
 - 三渠道均 WebP quality=80，压缩后端明确为 Creator utils/sharp（宿主 Node 14.16.0）；无需随插件携带原生库。
 - TikTok ZIP 580,341 字节，Google ZIP 579,973 字节，AppLovin Base122 HTML 773,086 字节。两份 ZIP、HTML 内嵌 ZIP CRC、报告大小与 SHA-256、WebP 内容标识通过。
 - 产物在 D:/prj/test2415/build/playable 的三个 playable-<渠道> 目录，独立日志在 .local/creator2415-recheck-*；本轮未验证官方广告容器或真机交互。无功能代码修改，未更新 cocos-pack、未提交。
+
+### 2026-11-05：十个安装版本的三渠道构建与本地场景验证
+
+- 实测 D:/creator 下 2.4.12、2.4.15、3.5.2、3.7.0、3.7.3、3.8.3、3.8.5、3.8.6、3.8.7、3.8.8。由源码生成对应插件并安装至各版本全局 builtin-extensions；安装前的插件副本保留于本轮 .local/previous-installed。使用隔离 HelloWorld 工程，WebP quality=80，三渠道默认格式、Base64 内嵌编码，AppLovin 使用 https://example.com/store 测试链接。
+- 本轮修复三处实际宿主差异。旧 Node 缺少 btoa，Base64 编码在 Node 中使用原生 Buffer。3.7.0 的 import map 允许引用包内已有 System.register 注册的 chunks:///_virtual/ 模块，缺少注册或外部 URL 仍拒绝。3.8.6 的脚本/引擎编译目标初值为 INVALID_PLATFORM，适配器显式设置 HTML5。
+- 3.7.0 的 SystemJS 接口切换与 3.6 分开适配：300_352/360_363 使用宿主 Web preset，370_374/380_382 使用宿主 module-system 重建浏览器加载器；3.8.3 起使用现代构建钩子。2.x 保留专用启动流程。
+- 最终 30 份产物均 packaged、未超体积限制；20 份 ZIP 和 10 份 HTML 内嵌 ZIP CRC、大小、SHA-256 通过。所有 3.x 包均包含 createScript 浏览器加载器。十份已安装插件的发布文件哈希一致。宿主 2.x 成功退出码为 0，3.x 为 36。
+- 30 份实际产物在本地浏览器配合模拟渠道 SDK 完成场景加载，等待场景存在及两帧渲染后记录结果；页面未捕获 error 日志。2.x 显示 Hello World，3.x 显示骑士场景。本地就绪探针只存在于预览响应，未写入交付产物。没有执行官方平台上传、实际商店跳转、真机或构建面板验收。
+- 初次并行启动测试有共享布局/图形缓存警告。3.7.0 一次重试未执行 Playable 钩子，宿主仍返回成功；以旧报告识别出未生成新交付包，串行重跑后钩子及新产物通过。3.8.6 隔离工程改用该宿主自带模板设置，消除旧模板设置迁移干扰。未修改 Editor、引擎或 CLI。
+- Node 22 类型检查、85/85 自动测试通过，含版本边界、无 btoa 编码、受限内存编解码和命名模块校验回归。产物与原始日志位于 .local/creator-matrix-20261105-143100，各工程 build/playable/playable-<渠道> 下。未生成到 cocos-pack。

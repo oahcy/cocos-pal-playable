@@ -3,13 +3,13 @@
 # Creator 独立 Playable 平台
 
 打包核心和渠道逻辑共用；Creator 版本只影响宿主适配、编译目标与 Editor 接入。
-目前 3.8.9 源码版已完成 UI 构建验证；3.8.3–3.8.8 已核对源码接口并提供插件生成配置，尚待修改后编辑器的完整构建验证。
+本机十个安装版本已完成三渠道真实构建和本地场景启动验证，版本与验证边界见 VALIDATION.md。3.8.9 源码版另有 UI 构建记录。
 
 ## 版本与入口
 
-- Creator 3.5.2 使用 `creator-300_352` 适配器和 Node 14.16 编译目标；仅启动及 settings 协议与 3.8 分开，渠道、压缩和交付逻辑共用。
-- `creatorVersions`：唯一的 Creator 版本映射，覆盖已提供适配的 3.5.2 和 3.8.3–3.8.9，全部生成独立平台。
-- 独立平台共用 `src/adapters/creator-platform`；3.8.3–3.8.4 输出 Node 14.16 兼容代码，3.8.5–3.8.9 输出 Node 20 兼容代码。
+- Creator 3.5.2 使用 `creator-300_352` 适配器和 Node 12 编译目标；仅启动及 settings 协议与 3.8 分开，渠道、压缩和交付逻辑共用。
+- `creatorVersions`：唯一的 Creator 版本映射，逐个列出可生成的 Creator 版本，范围和验证状态见历史适配文档。
+- Creator 3.8.3 起共用 `src/adapters/creator-platform`；3.8.3–3.8.4 输出 Node 14.16 兼容代码，3.8.5–3.8.9 输出 Node 20 兼容代码。
 - 公共选项、交付流程和 sharp 适配位于 `creator-shared`。独立平台不依赖旧 Web Mobile 适配器。
 
 旧 Web Mobile 附加适配、启用开关和入口选择参数已移除。旧安装副本不会自动卸载；升级时需替换旧插件，并新建独立 playable 平台任务。宿主 Web 钩子和浏览器加载器预设仍是独立平台的底层复用能力。
@@ -86,14 +86,14 @@ npm run pack-playable -- --from=3.8.3 --to=3.8.9
 
 3.5 没有新版 Application 类和启动委托，适配器调用宿主 Web 钩子生成该版本的 application.js、settings 和浏览器加载器，再按 `createApplication` 协议启动。单 HTML 从内嵌 settings 初始化，并使用共用 assetManager 资源适配。旧 application 模板里的 settings 入口只在交付副本中定点处理；模板不匹配会明确报错，避免全局替换 XMLHttpRequest。原 Web 构建文件不修改。
 
-SDK 和单 HTML 运行时随发布 profile 选择对应启动协议。当前只声明 3.5.2，不据此承诺其他 3.x 版本兼容；正式同名白名单包的完整 UI 链路仍需验收。
+SDK 和单 HTML 运行时随发布 profile 选择对应启动协议。同 profile 的其他版本仍需独立验收。正式同名插件的完整 UI 链路仍需验证。
 
 ## 历史版本分组
 
-独立平台沿用 OpenPaaS 的范围：`300_352`、`360_374`、`380_382`、`383_384`、`385_386`、`387`、`388`；另保留 `389`。
+独立平台以 OpenPaaS 的范围为基础。Creator 3.7.0 切换了 SystemJS 构建接口，因此将 `360_374` 拆为 `360_363` 和 `370_374`。
 分组声明在 compatibility.json 的 creatorPlatformGroups。多个分组允许指向同一个适配实现，不复制代码；有实际接口差异时再拆分实现。
 
-`300_352` 当前使用在 3.5.2 验证的旧启动适配；`360_374` 和 `380_382` 先保留位置，profile 为空。
+`300_352` 和 `360_363` 由宿主读取 Web preset 生成浏览器加载器。`370_374` 和 `380_382` 共用旧式 Web 钩子，并在交付前用宿主 module-system 重建浏览器加载器。
 分组范围用于规定适配边界，creatorVersions 仍是实际允许生成的版本清单。未经适配的版本不会因为落在范围内而自动发布。verifiedVersions 单独记录验证版本，扩展发布清单前应核对宿主接口并测试。
 
 ## 适配代码归属

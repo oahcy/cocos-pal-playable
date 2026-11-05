@@ -45,9 +45,14 @@ export async function onAfterInit(this: unknown, options: Options, result: Creat
   // 3.5 has no onAfterBundleInit; set the browser script preset here.
   options.buildScriptParam.system = { preset: 'web' };
 }
-export async function onAfterBuild(this: unknown, options: Options, result: CreatorResult, cache: unknown) {
-  const channels = selections(options);
-  // The host hook populates application/importMap/settings paths and renders its templates.
-  await webHooks().onAfterBuild.call(this, options, result, cache);
-  return deliverCreatorChannels(options, result, channels);
+export function createAfterBuild(prepareLoader?: (result: CreatorResult, debug?: boolean) => Promise<void>) {
+  return async function onAfterBuild(this: unknown, options: Options, result: CreatorResult, cache: unknown) {
+    const channels = selections(options);
+    // The host hook populates application/importMap/settings paths and renders its templates.
+    await webHooks().onAfterBuild.call(this, options, result, cache);
+    if (prepareLoader) await prepareLoader(result, options.debug);
+    return deliverCreatorChannels(options, result, channels);
+  };
 }
+
+export const onAfterBuild = createAfterBuild();

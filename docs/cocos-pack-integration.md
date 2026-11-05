@@ -12,7 +12,7 @@ cocos-pal-playable/src + runtime + scripts
     → Dashboard 下发安装
 ```
 
-同适配 profile 本轮只编译、输出一份共享目录：playable_232_234、playable_240_2415、playable_300_352、playable_360_374、playable_380_382、playable_383_384、playable_385_389。各目标版本仍分别生成 ZIP；版本范围目录名不扩大兼容映射。生成包记录逐文件 SHA-256，cocos-pack 中的产物应提交版本管理；CocosPack ZIP 和 .local 备份不提交。禁止手改产物后反向同步。
+同适配 profile 本轮只编译、输出一份共享目录：playable_232_234、playable_240_2415、playable_300_352、playable_360_363、playable_370_374、playable_380_382、playable_383_384、playable_385_389。各目标版本仍分别生成 ZIP；版本范围目录名不扩大兼容映射。生成包记录逐文件 SHA-256，cocos-pack 中的产物应提交版本管理；CocosPack ZIP 和 .local 备份不提交。禁止手改产物后反向同步。
 
 ## 从源码仓库生成
 
@@ -47,4 +47,4 @@ CLI 包通过 --host=cli 生成，携带 sharp 生产依赖；Creator 包复用�
 
 Creator 包同时保留 editor 和 engines.creator，由同一适配版本列表生成。Dashboard 使用 engines.creator 判断适用 Creator，使用标准 version 判断更新；package_version: 2 不作为递增发布版本。发布新版时手动递增本仓库 package.json 的 version。
 
-插件与平台名称均为 playable。Dashboard 负责下载、安装，插件不实现自更新。白名单、正式云端下发及更新后构建进程缓存仍需联调。安装在已获准入的目录；当前建议重启已打开的 Creator 刷新缓存。
+插件与平台名称均为 playable。Dashboard 负责下载、安装，插件不实现自更新。Creator 3.x 插件通过 package.json 的 creator.builder.internal 和 creator.builder.platform（均为布尔值 true）声明内部构建平台。支持此机制的 Creator 从当前版本的全局 builtin-extensions/<版本>/playable/ 目录读取声明，并注册同名平台。正式云端下发和更新后的构建缓存仍需联调。

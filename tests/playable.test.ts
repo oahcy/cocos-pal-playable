@@ -32,6 +32,24 @@ test('ZIP has root entries, excludes unrelated files, and carries a verification
   assert.equal(report.verification, 'local-static-only');
   assert.equal((await zip.file('config.json')!.async('string')), '{"Playable_orientation":0}');
 });
+test('Creator named chunk imports resolve from packaged bundle registrations', async t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, 'src'));
+  fs.mkdirSync(path.join(root, 'assets'));
+  const map = { imports: { 'virtual:///prerequisite-imports/main': 'chunks:///_virtual/main' } };
+  fs.writeFileSync(path.join(root, 'src/import-map.json'), JSON.stringify(map));
+  const script = path.join(root, 'assets/main.js');
+  fs.writeFileSync(script, 'System.register("chunks:///_virtual/main", [], function () {});');
+  const report = await packageBuild(root);
+  const zip = await JSZip.loadAsync(fs.readFileSync(report.archive));
+  assert.deepEqual(JSON.parse(await zip.file('src/import-map.json')!.async('string')), map);
+  fs.writeFileSync(script, 'System.register("chunks:///_virtual/other", [], function () {});');
+  await assert.rejects(packageBuild(root), /External or absolute reference/);
+  map.imports['virtual:///prerequisite-imports/main'] = 'https://example.com/external.js';
+  fs.writeFileSync(path.join(root, 'src/import-map.json'), JSON.stringify(map));
+  await assert.rejects(packageBuild(root), /External or absolute reference/);
+});
+
 test('rejects external assets and invalidates the prior ZIP', async t => {
   const root = fixture(t); const first = await packageBuild(root);
   fs.appendFileSync(path.join(root, 'index.html'), '<img src="https://example.com/a.png">');

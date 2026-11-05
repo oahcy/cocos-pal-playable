@@ -4,6 +4,11 @@ import { encodeBase122, decodeBase122 } from './base122';
 const codecs = {
   base64: {
     encode(bytes: Uint8Array): string {
+      // Older Creator Node runtimes have no btoa. Buffer also avoids building a
+      // second binary string for large archives. Browsers use their native btoa.
+      if (typeof Buffer !== 'undefined') {
+        return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
+      }
       let binary = '';
       for (let offset = 0; offset < bytes.length; offset += 8192) {
         binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));

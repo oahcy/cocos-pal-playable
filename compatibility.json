@@ -47,8 +47,8 @@
       "applicationAdapter": "creator-300_352",
       "artifactDirectory": "playable_300_352"
     },
-    "creator-platform-360_374": {
-      "adapter": "creator-360_382",
+    "creator-platform-360_363": {
+      "adapter": "creator-360_363",
       "nodeTarget": "node14.16",
       "runtime": "systemjs",
       "layout": "creator-extension",
@@ -57,10 +57,22 @@
       ],
       "editorIntegration": "playable-platform",
       "applicationAdapter": "application-3x",
-      "artifactDirectory": "playable_360_374"
+      "artifactDirectory": "playable_360_363"
+    },
+    "creator-platform-370_374": {
+      "adapter": "creator-370_382",
+      "nodeTarget": "node14.16",
+      "runtime": "systemjs",
+      "layout": "creator-extension",
+      "externalDependencies": [
+        "sharp"
+      ],
+      "editorIntegration": "playable-platform",
+      "applicationAdapter": "application-3x",
+      "artifactDirectory": "playable_370_374"
     },
     "creator-platform-380_382": {
-      "adapter": "creator-360_382",
+      "adapter": "creator-370_382",
       "nodeTarget": "node14.16",
       "runtime": "systemjs",
       "layout": "creator-extension",
@@ -120,15 +132,15 @@
     "3.4.2": "creator-platform-300_352",
     "3.5.0": "creator-platform-300_352",
     "3.5.1": "creator-platform-300_352",
-    "3.6.0": "creator-platform-360_374",
-    "3.6.1": "creator-platform-360_374",
-    "3.6.2": "creator-platform-360_374",
-    "3.6.3": "creator-platform-360_374",
-    "3.7.0": "creator-platform-360_374",
-    "3.7.1": "creator-platform-360_374",
-    "3.7.2": "creator-platform-360_374",
-    "3.7.3": "creator-platform-360_374",
-    "3.7.4": "creator-platform-360_374",
+    "3.6.0": "creator-platform-360_363",
+    "3.6.1": "creator-platform-360_363",
+    "3.6.2": "creator-platform-360_363",
+    "3.6.3": "creator-platform-360_363",
+    "3.7.0": "creator-platform-370_374",
+    "3.7.1": "creator-platform-370_374",
+    "3.7.2": "creator-platform-370_374",
+    "3.7.3": "creator-platform-370_374",
+    "3.7.4": "creator-platform-370_374",
     "3.8.0": "creator-platform-380_382",
     "3.8.1": "creator-platform-380_382",
     "3.8.2": "creator-platform-380_382",
@@ -165,7 +177,10 @@
       "from": "2.4.0",
       "to": "2.4.15",
       "profile": "creator-platform-240_2415",
-      "verifiedVersions": []
+      "verifiedVersions": [
+        "2.4.12",
+        "2.4.15"
+      ]
     },
     {
       "name": "300_352",
@@ -177,11 +192,21 @@
       ]
     },
     {
-      "name": "360_374",
+      "name": "360_363",
       "from": "3.6.0",
-      "to": "3.7.4",
-      "profile": "creator-platform-360_374",
+      "to": "3.6.3",
+      "profile": "creator-platform-360_363",
       "verifiedVersions": []
+    },
+    {
+      "name": "370_374",
+      "from": "3.7.0",
+      "to": "3.7.4",
+      "profile": "creator-platform-370_374",
+      "verifiedVersions": [
+        "3.7.0",
+        "3.7.3"
+      ]
     },
     {
       "name": "380_382",
@@ -195,28 +220,37 @@
       "from": "3.8.3",
       "to": "3.8.4",
       "profile": "creator-platform-383_384",
-      "verifiedVersions": []
+      "verifiedVersions": [
+        "3.8.3"
+      ]
     },
     {
       "name": "385_386",
       "from": "3.8.5",
       "to": "3.8.6",
       "profile": "creator-platform",
-      "verifiedVersions": []
+      "verifiedVersions": [
+        "3.8.5",
+        "3.8.6"
+      ]
     },
     {
       "name": "387",
       "from": "3.8.7",
       "to": "3.8.7",
       "profile": "creator-platform",
-      "verifiedVersions": []
+      "verifiedVersions": [
+        "3.8.7"
+      ]
     },
     {
       "name": "388",
       "from": "3.8.8",
       "to": "3.8.8",
       "profile": "creator-platform",
-      "verifiedVersions": []
+      "verifiedVersions": [
+        "3.8.8"
+      ]
     },
     {
       "name": "389",

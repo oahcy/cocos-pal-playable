@@ -9,8 +9,9 @@
 | 232_234 | Creator 2 simple-build-target，继承 web-mobile | 保留 Web boot，包装 cc.loader 的非 UUID 下载处理器，保留 pack 路由 |
 | 240_2415 | 同一 2.x 构建实现 | 使用 assetManager 管线，将 _preprocessPipe 映射到共享协议 |
 | 300_352 | 旧式 Creator Web 钩子，Node 12 输出 | createApplication 工厂协议、扁平 settings |
-| 360_374 | 旧式 Web 钩子 | 适配工厂和 Application 两种导出协议 |
-| 380_382 | 旧式 Web 钩子 | 同一协议适配层 |
+| 360_363 | 旧式 Web 钩子，宿主读取 Web preset 生成加载器 | 适配工厂和 Application 两种导出协议 |
+| 370_374 | 旧式 Web 钩子，使用宿主 module-system 重建浏览器加载器 | 同一协议适配层 |
+| 380_382 | 与 370_374 共用构建实现 | 同一协议适配层 |
 | 383_384 | 现代独立平台，Node 14.16 输出 | Application 类协议 |
 | 385_389 | 现代独立平台，Node 20 输出 | Application 类协议 |
 
@@ -26,9 +27,9 @@
 
 ## 验证边界
 
-- 自动回归覆盖版本映射、生成包、两种 3.x Application 协议、2.3 下载处理器、2.x Web 样例的 TikTok ZIP 和 AppLovin 单 HTML。
-- 本机 3.7.3 使用隔离的 3.5.2 样例工程完成真实构建，三渠道产物已生成。为借用原版白名单，仅本地测试副本使用 openpaas 名称和较高测试版本；正式包始终为 playable。样例未压缩，三个产物均超限，按约定保留；不代表可投放。
-- 既有 3.5.2 和现代版本的验收记录见 VALIDATION.md；不自动扩展到同版本的不同重打包客户端。
-- Creator 2.4.15 已在隔离工程完成真实 CLI 构建并生成 TikTok ZIP；2.x 的完整 UI、游戏画面和官方容器仍待验证。3.0～3.5.1、3.6、3.8.0～3.8.2 等未逐个安装包实测；历史接口不匹配时会明确报错，需要对应宿主补充回归。
+- 2026-11-05 已在本机安装版 2.4.12、2.4.15、3.5.2、3.7.0、3.7.3、3.8.3、3.8.5、3.8.6、3.8.7、3.8.8 完成三渠道真实构建。每版输出 TikTok ZIP、Google Ads ZIP、AppLovin Base64 单 HTML，均使用 WebP quality=80。
+- 30 份产物在本地浏览器配合模拟渠道 SDK 完成场景加载和渲染，未捕获 error 日志。产物 SHA-256、ZIP/内嵌 ZIP CRC、浏览器加载器及安装插件文件哈希通过。官方 SDK 行为、渠道审核、真机和构建面板仍需分别验证。
+- 3.7.0 一次并发 CLI 重试跳过了 Playable 钩子，保留了上次失败报告。串行重跑后确认钩子执行并生成新产物。验证需同时检查钩子日志、产物更新时间和交付报告，不能只依赖宿主退出码。
+- 其他历史版本及 macOS 尚待实际客户端验收。compatibility.json 的 verifiedVersions 仅记录具体已测版本，验收不自动扩展到同版本的其他重打包客户端。3.8.9 源码版的既有验证见 VALIDATION.md。
 
-发布前需为目标客户端完成对应实机验收。平台白名单与正式 Creator/Dashboard 发布由 Editor 团队负责；插件可生成不等于客户端已准入。
+平台准入与正式 Creator/Dashboard 发布由 Editor 团队负责。

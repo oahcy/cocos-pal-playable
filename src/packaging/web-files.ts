@@ -38,6 +38,14 @@ function validate(entries: Entry[], channel: Channel) {
     if (!byName.has(name)) throw new Error('Missing required file: ' + name);
   }
   channel.validate(entries);
+  // Creator 3.7.0 maps prerequisite imports to named modules in bundle scripts.
+  // These identifiers are resolved by SystemJS, without a network request.
+  const registeredChunks = new Set<string>();
+  for (const entry of entries) {
+    if (!entry.name.endsWith('.js')) continue;
+    const registrations = entry.data.toString().matchAll(/\bSystem\.register\s*\(\s*(["'])(chunks:\/\/\/_virtual\/[^"']+)\1\s*,/g);
+    for (const match of registrations) registeredChunks.add(match[2]);
+  }
   function reference(from: string, value: string, base = path.posix.dirname(from), localOnly = false) {
     if (localOnly && (!value || nonLocalReference.test(value))) {
       throw new Error('Invalid local reference in ' + from + ': ' + value);
@@ -67,7 +75,10 @@ function validate(entries: Entry[], channel: Channel) {
       const map = JSON.parse(text) as { imports?: Record<string, string>; scopes?: Record<string, Record<string, string>> };
       const mappings = [map.imports || {}, ...Object.values(map.scopes || {})];
       for (const values of mappings) {
-        for (const value of Object.values(values)) reference(entry.name, value);
+        for (const value of Object.values(values)) {
+          if (registeredChunks.has(value)) continue;
+          reference(entry.name, value);
+        }
       }
     }
     if (/settings.*\.json$/i.test(entry.name)) {

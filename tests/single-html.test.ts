@@ -239,6 +239,17 @@ test('Base122 preserves every byte and partial groups in HTML-safe UTF-8', async
 test('shared archive codec preserves bytes, defaults and rejects unknown encodings', async () => {
   const { encodeArchive, decodeArchive, embeddedEncodings } = await import('../runtime/embedded/embedded-codec');
   const { randomBytes } = await import('node:crypto');
+  // Older Creator hosts expose neither browser Base64 global in Node.
+  const previousBtoa = globalThis.btoa;
+  try {
+    Object.defineProperty(globalThis, 'btoa', { value: undefined, configurable: true, writable: true });
+    for (const length of [0, 1, 2, 3, 4, 12287, 12288, 12289]) {
+      const bytes = randomBytes(length);
+      assert.equal(encodeArchive(bytes), bytes.toString('base64'));
+    }
+  } finally {
+    Object.defineProperty(globalThis, 'btoa', { value: previousBtoa, configurable: true, writable: true });
+  }
   for (const bytes of [Buffer.alloc(0), Buffer.from([0, 13, 10, 255]), randomBytes(100003)]) {
     assert.equal(encodeArchive(bytes), bytes.toString('base64'));
     assert.deepEqual(Buffer.from(decodeArchive(encodeArchive(bytes))), bytes);
