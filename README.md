@@ -50,12 +50,23 @@ Creator 复用编辑器自带 sharp；CLI 独立插件携带自己的依赖。�
 
 ```powershell
 npm run preview -- "产物.zip" --mock-api
-npm run verify:preview -- "产物.html" --browser=chrome --timeout=30000
+npm run verify:preview -- "产物.html" --browser=chrome --timeout=30000 --expected-version=2.4.12
 ```
 
 统一 Mock 通过真实 runtime 的 Adapter 工厂注入，ZIP 和单 HTML 共用；要求产物由当前插件生成，包含 data-playable-runtime 标记和工厂入口。SystemJS、内嵌资源与 Creator 启动适配继续执行产物代码。预览仅修改本地 HTTP 响应。
 
-自动验收使用本机已安装的 Chrome，也可传 --browser=msedge 使用 Edge。它等待真实场景和后续两帧引擎运行，捕获脚本错误、HTTP/资源失败及超时，成功退出 0，失败退出 1。playwright-core 仅为开发依赖。
+自动验收使用本机已安装的 Chrome，也可传 --browser=msedge 使用 Edge。它等待真实场景和后续两帧引擎运行，捕获脚本错误、HTTP/资源失败及超时，同时输出浏览器日志，检查引擎自己的 `Cocos Creator v…` 启动日志，并读取运行中的 `cc.ENGINE_VERSION` 交叉验证；部分正式引擎不打印 banner 时使用运行时版本值，输出注明来源。两者都缺失、互相冲突或与 `--expected-version` 不一致均验收失败。版本应来自测试计划，不从产物名推断。成功退出 0，失败退出 1。playwright-core 仅为开发依赖。
+
+批量验收执行 `npm run verify:preview -- --batch=验收清单.json`，清单内容例如：
+
+```json
+[
+  { "archive": "build/creator2412/tiktok.zip", "expectedVersion": "2.4.12" },
+  { "archive": "build/creator373/applovin.html", "expectedVersion": "3.7.3" }
+]
+```
+
+路径相对清单文件。批量串行执行，浏览器和 Mock 编译只初始化一次，每项新建隔离浏览器上下文；失败继续后续项，任意失败时命令退出码为 1。输出共享初始化耗时，以及各项准备（含 ZIP CRC 和预览启动）、场景启动、后续两帧、清理、总耗时（毫秒），失败项保留已执行阶段的耗时。不重新运行 Creator 构建。
 
 控制台可调用 window.__playablePreview.setViewable(false) 隐藏容器，传 true 恢复；调用 window.__playablePreview.setMuted(true) 静音，传 false 解除。下载和结束调用记录在 window.__playablePreview.calls。预览 URL 附加 ?ready=manual&viewable=false 可模拟未就绪且初始隐藏，再调用 window.__playablePreview.ready() 和 setViewable(true) 启动。
 

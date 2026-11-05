@@ -5,12 +5,21 @@ import JSZip from 'jszip';
 import { build } from 'esbuild';
 import { prepareMockPreview, prepareAPIMockPreview } from '../preview-sdk';
 
-export interface PreviewOptions { mockSDK?: boolean; mockAPI?: boolean; port?: number }
+export interface PreviewOptions { mockSDK?: boolean; mockAPI?: boolean; port?: number; mockAPIScript?: string }
 const types: Record<string, string> = {
   html: 'text/html', js: 'application/javascript', json: 'application/json', css: 'text/css',
   png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', wasm: 'application/wasm',
   ttf: 'font/ttf', mp3: 'audio/mpeg', ogg: 'audio/ogg',
 };
+
+/** Compile once per verification session; a new session picks up source changes. */
+export async function compileMockAPI(): Promise<string> {
+  const bundle = await build({
+    entryPoints: [path.join(__dirname, 'mock-entry.ts')], bundle: true, write: false,
+    platform: 'browser', format: 'iife', target: 'es2017', minify: true,
+  });
+  return bundle.outputFiles[0].text;
+}
 
 export async function startPreview(archive: string, options: PreviewOptions = {}) {
   if (options.mockAPI && options.mockSDK) throw new Error('Choose either --mock-api or --mock-sdk');
@@ -28,11 +37,7 @@ export async function startPreview(archive: string, options: PreviewOptions = {}
   let mode = 'official-sdk';
   if (options.mockAPI) {
     page = prepareAPIMockPreview(index);
-    const bundle = await build({
-      entryPoints: [path.join(__dirname, 'mock-entry.ts')], bundle: true, write: false,
-      platform: 'browser', format: 'iife', target: 'es2017', minify: true,
-    });
-    script = bundle.outputFiles[0].text;
+    script = options.mockAPIScript ?? await compileMockAPI();
     scriptPath = '__preview/mock-api.js';
     mode = 'mock-api';
   } else if (options.mockSDK) {
