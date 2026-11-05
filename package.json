@@ -23,7 +23,8 @@
     "single-html": "tsx scripts/single-html.ts",
     "plugin": "tsx scripts/plugin.ts",
     "pack:cocos": "tsx scripts/cocos-pack.ts",
-    "verify:preview": "tsx scripts/verify-preview.ts"
+    "verify:preview": "tsx scripts/verify-preview.ts",
+    "demo:sdk": "tsx scripts/sdk-demo.ts"
   },
   "contributes": {
     "builder": {

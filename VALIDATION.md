@@ -2,6 +2,12 @@
 
 更新日期：2026-10-27。仅记录已经完成的验证；历史逐轮排查和中间产物哈希可从 Git 历史查询。
 
+## SDK 验收 Demo（2026-11-05）
+
+- 新增纯 HTML demo，复用统一 runtime 与 TikTok、Google Ads、AppLovin 的真实 Adapter，配置统一读取 examples/sdk-demo/config.json。
+- 生成 TikTok ZIP 3,836 字节、Google Ads ZIP 3,464 字节、AppLovin 单 HTML 7,231 字节；SDK 引用、ZIP CRC、文件清单和配置传入检查通过。
+- Chrome 本地模拟 SDK 验证三个渠道的初始化、下载调用、结束去重、取消和恢复监听；统一 Mock 验证可见性、静音和退订，移动尺寸无横向溢出。此项不代表官方容器验收通过。
+- 类型检查及完整测试 89/89 通过。AppLovin 当前为配置中的占位商店链接，上传测试前应替换。
 ## 正式插件包与三渠道 UI 构建（2026-10-22）
 
 - 通过根目录 `npm.cmd run pack-playable -- --creator-entry=platform 3.8.9` 生成 `CocosPack/v3.8.9-playable.zip`（125,576 字节）。补齐版本清单中的 3.8.9 / ccbuild 2.3.16 映射；依据为本地源码编辑器配套引擎 package.json。ZIP 校验通过，解包安装到源码编辑器 app/extension/playable 后，22 个清单文件 SHA-256 一致。

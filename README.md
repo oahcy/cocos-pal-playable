@@ -61,6 +61,10 @@ npm run verify:preview -- "产物.html" --browser=chrome --timeout=30000
 
 原渠道 SDK Mock 仍使用 npm run preview -- "产物.zip" --mock-sdk，适用于渠道接口映射检查和旧产物。两种 Mock 模式互斥。按钮和结束 UI 由业务实现，下载点击调用 playable.openStore()。
 
+## SDK 渠道验收 Demo
+
+npm run demo:sdk 生成极简 SDK 测试页面，输出 generated/sdk-demo/ 下的 TikTok ZIP、Google Ads ZIP 和 AppLovin 单 HTML。页面覆盖统一 API 全部属性、方法与退订函数，使用真实渠道 Adapter；标题、商店链接及输出目录集中在 examples/sdk-demo/config.json，也可通过 --config 指定配置。详细操作见 [SDK Demo](examples/sdk-demo/README.md)。
+
 ## 文件职责
 
 | 目录 | 职责 |

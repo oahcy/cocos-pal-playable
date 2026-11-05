@@ -1,0 +1,5 @@
+{
+  "title": "Playable SDK Demo",
+  "storeUrl": "https://example.com/store",
+  "outputDirectory": "generated/sdk-demo"
+}

@@ -29,6 +29,7 @@
     "src/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
-    "i18n/**/*.ts"
+    "i18n/**/*.ts",
+    "examples/**/*.ts"
   ]
 }
