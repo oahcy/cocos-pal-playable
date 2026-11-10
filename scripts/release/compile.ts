@@ -10,7 +10,7 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
   await esbuild.build({
     alias: { '@playable/host-application': path.join(applicationDir, 'application.ts') },
     entryPoints: ['config', 'hooks'].map(name => path.join(root, 'src/adapters', profile.adapter, name + '.ts')),
-    outdir: path.join(output, 'dist'), outExtension: { '.js': '.cjs' },
+    outdir: path.join(output, 'dist'), outExtension: { '.js': profile.entryExtension },
     bundle: true, platform: 'node', target: profile.nodeTarget, format: 'cjs', external: profile.layout !== 'cli-platform' ? profile.externalDependencies.filter(name => name !== 'sharp') : profile.externalDependencies,
     // Legacy Creator loaders resolve bare built-ins, but may reject the node: scheme.
     plugins: profile.layout !== 'cli-platform' ? [{
@@ -45,9 +45,11 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
 /** Production and browser regression must compile the same panel entry with the same options. */
 export async function compileCreatorPanel(output: string, profile: ReturnType<typeof selectProfile>) {
   if (!profile.editorIntegration) throw new Error('Creator panel compilation requires a Creator profile');
+  const outfile = path.join(output, 'dist/panel' + profile.entryExtension);
   await esbuild.build({
     entryPoints: [path.join(root, 'src/adapters', profile.editorIntegration === 'simple-build-target' ? 'creator-2x' : 'creator-platform', 'panel.ts')],
-    outfile: path.join(output, 'dist/panel.cjs'), bundle: true, platform: 'node',
+    outfile, bundle: true, platform: 'node',
     format: 'cjs', target: profile.nodeTarget, minify: true, sourcemap: false,
   });
+  return outfile;
 }

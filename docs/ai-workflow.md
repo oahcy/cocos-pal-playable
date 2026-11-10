@@ -50,6 +50,8 @@ npm run plugin -- verify --input=.local/playable-352.zip
 }
 ```
 
+Creator 3.0.0 的 `buildPath` 使用工程相对路径，例如 `"buildPath": "build"`。
+
 Windows PowerShell
 
 ```powershell

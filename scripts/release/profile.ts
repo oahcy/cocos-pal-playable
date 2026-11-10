@@ -54,5 +54,7 @@ export function selectProfile(host = 'cli', creatorVersion?: string, root = proj
   const editor = host === 'creator'
     ? Object.keys(artifactVersions).filter(version => artifactVersions[version] === id).sort().join(' || ')
     : undefined;
-  return { id, ...profile, editor };
+  // Creator 3.0's CommonJS loader resolves build entries as .js.
+  const entryExtension = id === 'creator-platform-300_352' ? '.js' : '.cjs';
+  return { id, ...profile, editor, entryExtension };
 }

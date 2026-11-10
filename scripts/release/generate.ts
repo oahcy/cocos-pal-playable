@@ -20,7 +20,7 @@ export async function generatePlugin(output: string, host = 'cli', creatorVersio
     ? { name: 'playable', version, description, license, editor: profile.editor, engines: { creator: profile.editor }, title: 'Playable',
       ...(profile.editorIntegration === 'simple-build-target'
         ? { 'simple-build-target': './dist/config.cjs', profiles: { project: { channels: null } } }
-        : { package_version: 2, creator: { builder: { internal: true, platform: true } }, contributions: { builder: './dist/config.cjs' } }) }
+        : { package_version: 2, creator: { builder: { internal: true, platform: true } }, contributions: { builder: './dist/config' + profile.entryExtension } }) }
     : { name, version, description, license, type, contributes }, null, 2));
   const dependencies = host === 'creator'
     ? profile.externalDependencies.filter(name => name !== 'sharp')
@@ -31,7 +31,7 @@ export async function generatePlugin(output: string, host = 'cli', creatorVersio
   const nativeSmoke = sharpDependency
     ? `Promise.all(['png','jpeg','webp'].map(format=>require(p+'/node_modules/${sharpDependency}')({create:{width:2,height:2,channels:4,background:'#fff'}})[format]({quality:80}).toBuffer())).catch(e=>{console.error(e);process.exitCode=1})`
     : '';
-  execFileSync(process.execPath, ['-e', `const p=process.cwd(); require(p+'/dist/config.cjs'); require(p+'/dist/hooks.cjs'); ${nativeSmoke}`], { cwd: output, stdio: 'pipe', env: { ...process.env, NODE_PATH: '' } });
+  execFileSync(process.execPath, ['-e', `const p=process.cwd(); require(p+'/dist/config${profile.entryExtension}'); require(p+'/dist/hooks${profile.entryExtension}'); ${nativeSmoke}`], { cwd: output, stdio: 'pipe', env: { ...process.env, NODE_PATH: '' } });
   const files = Object.fromEntries([...readFiles(output)].map(([name, data]) => [name, hash(data)]));
   fs.writeFileSync(path.join(output, releaseFile), JSON.stringify({ schemaVersion: 1, pluginVersion: version, host, profile: profile.id, nodeTarget: profile.nodeTarget, ...(profile.editorIntegration ? { editorIntegration: profile.editorIntegration } : {}), platform: process.platform, arch: process.arch, files }, null, 2));
   verifyFiles(readFiles(output));

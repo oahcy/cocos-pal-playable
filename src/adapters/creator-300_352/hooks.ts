@@ -11,18 +11,24 @@ interface Options extends CreatorOptions {
   buildScriptParam: { system?: { preset: string } };
 }
 type HostHook = (this: unknown, options: Options, result: CreatorResult, cache: unknown) => unknown;
-declare const Editor: { App: { path: string }; Module: { requireFile(file: string): { onAfterInit: HostHook; onAfterBuild: HostHook } } };
-function webHooks() {
+declare const Editor: { App: { path: string }; Module?: { requireFile(file: string): WebHooks } };
+type WebHooks = { onAfterInit: HostHook; onAfterBuild: HostHook };
+function webHooks(): WebHooks {
   // Use the installed version's Web templates and loader, like the openpaas adapter.
   const candidates = [
     'modules/platform-extensions/extensions/web-mobile/dist/builder/hooks.ccc',
     'modules/platform-extensions/extensions/web-mobile/dist/builder/hooks.js',
     'builtin/web-mobile/dist/builder/hooks.ccc',
     'builtin/web-mobile/dist/builder/hooks.js',
+    'platforms/internal/web-mobile/dist/builder/hooks.ccc',
+    'platforms/internal/web-mobile/dist/builder/hooks.js',
   ];
   const errors: string[] = [];
   for (const relative of candidates) {
-    try { return Editor.Module.requireFile(path.join(Editor.App.path, relative)); }
+    const filename = path.join(Editor.App.path, relative);
+    try {
+      return Editor.Module?.requireFile ? Editor.Module.requireFile(filename) : require(filename) as WebHooks;
+    }
     catch (error) { errors.push(relative + ': ' + String(error)); }
   }
   throw new Error('Creator Web hooks are unavailable: ' + errors.join('; '));

@@ -142,8 +142,8 @@ export async function verifyPanels(browserChannel: 'chrome' | 'msedge' = 'chrome
     const bundles = new Map<string, string>();
     for (const version of versions) {
       const output = path.join(directory, version);
-      await compileCreatorPanel(output, selectProfile('creator', version));
-      bundles.set(version, fs.readFileSync(path.join(output, 'dist/panel.cjs'), 'utf8'));
+      const panel = await compileCreatorPanel(output, selectProfile('creator', version));
+      bundles.set(version, fs.readFileSync(panel, 'utf8'));
     }
     const host = await build({ entryPoints: [path.join(__dirname, 'host.ts')], bundle: true, write: false, platform: 'browser', format: 'iife', target: 'es2017' });
     server = http.createServer((request, response) => {

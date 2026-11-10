@@ -60,7 +60,11 @@ test('3.5 release retains playable identity and ships the matching startup proto
   assert.ok(manifest.editor.split(' || ').includes('3.5.2'));
   assert.deepEqual(manifest.engines, { creator: manifest.editor });
   assert.equal(manifest.package_version, 2);
-  const config = require(path.join(plugin, 'dist/config.cjs'));
+  assert.equal(manifest.contributions.builder, './dist/config.js');
+  const config = require(path.join(plugin, manifest.contributions.builder));
+  assert.equal(config.configs.playable.hooks, './hooks.js');
+  assert.equal(config.configs.playable.panel, './panel.js');
+  assert.equal(typeof require(path.join(plugin, 'dist/panel.js')).ready, 'function');
   assert.deepEqual(Object.keys(config.configs), ['playable']);
   const runtime = fs.readFileSync(path.join(plugin, 'dist/playable-runtime.js'), 'utf8');
   assert.ok(runtime.includes('__startLegacyPlayable'));
@@ -100,7 +104,8 @@ test('generated legacy Web hooks rebuild the loader only on hosts with module-sy
       onAfterBuild() { fs.writeFileSync(systemJs, 'host web hook'); },
     }) } };
     await generatePlugin(plugin, 'creator', version);
-    const { onAfterBuild } = require(path.join(plugin, 'dist/hooks.cjs'));
+    const extension = selectProfile('creator', version).entryExtension;
+    const { onAfterBuild } = require(path.join(plugin, 'dist/hooks' + extension));
     const result = { paths: { dir: output, systemJs, applicationJS: path.join(output, 'application.js') } };
     // Stop at the bootstrap compiler, after the loader stage has completed.
     await assert.rejects(onAfterBuild({ platform: 'playable', packages: {} }, result, {}), /Reached channel delivery/);

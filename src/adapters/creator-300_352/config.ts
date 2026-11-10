@@ -4,7 +4,7 @@ import { playableOptions } from '../creator-shared/options';
 export const configs = {
   playable: {
     platformName: 'i18n:playable.title', platformType: 'HTML5',
-    hooks: './hooks.cjs', panel: './panel.cjs',
+    hooks: './hooks.js', panel: './panel.js',
     textureCompressConfig: { platformType: 'web', support: { rgb: [], rgba: [] } },
     assetBundleConfig: { supportedCompressionTypes: ['none', 'merge_dep', 'merge_all_json'] },
     commonOptions: { debug: false, sourceMaps: false, md5Cache: false, server: false, mainBundleIsRemote: false },

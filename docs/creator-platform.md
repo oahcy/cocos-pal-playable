@@ -19,7 +19,7 @@
 
 2.x 使用 `simple-build-target` 和项目 Profile，保留原 `main.js` 与引擎脚本。构建器将 `settings.js` 当作数据对象解析，支持 JSON5 无引号键。2.3 保留 UUID 和 pack 路由，其他资源通过内嵌 Blob 交给原解析器。2.4 复用 assetManager 管线。
 
-3.x 使用 `contributions.builder` 与 `package_version: 2`。3.5 的启动入口使用 `createApplication`。3.7.0 起的旧式 Web 钩子通过宿主 module-system 重建浏览器加载器。较新的宿主继续复用 Web 加载器，构建平台保持 `playable`。
+3.x 使用 `contributions.builder` 与 `package_version: 2`。3.0～3.5.2 分组输出 `.js` 构建入口，兼容 3.0 的 CommonJS 加载器。该分组的启动入口使用 `createApplication`。3.7.0 起的旧式 Web 钩子通过宿主 module-system 重建浏览器加载器。较新的宿主继续复用 Web 加载器，构建平台保持 `playable`。
 
 Creator 使用宿主 Sharp。2.x 通过 `Editor.App.path` 或 `Editor.url("app://")` 定位 `resources/utils/sharp`。图片压缩默认关闭，启用时要求宿主提供可用的 Sharp。
 

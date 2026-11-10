@@ -26,10 +26,14 @@ export function verifyFiles(files: Map<string, Buffer>): Release {
   const expected = Object.keys(release.files).sort();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Plugin file set mismatch');
   for (const name of actual) if (hash(files.get(name)!) !== release.files[name]) throw new Error('Plugin checksum mismatch: ' + name);
-  for (const name of ['package.json', 'dist/config.cjs', 'dist/hooks.cjs', 'dist/playable-runtime.js', 'dist/google-ads-runtime.js', 'dist/single-html-runtime.js', 'static/templates/index.ejs', 'i18n/en.js', 'i18n/zh.js', ...(release.host === 'cli' ? ['node_modules/sharp/package.json'] : [])]) {
+  const manifestFile = files.get('package.json');
+  if (!manifestFile) throw new Error('Missing required plugin file: package.json');
+  const manifest = JSON.parse(manifestFile.toString());
+  // Both legacy .cjs archives and the .js entry used by Creator 3.0 remain verifiable.
+  const extension = release.host === 'creator' && manifest.contributions?.builder === './dist/config.js' ? '.js' : '.cjs';
+  for (const name of ['dist/config' + extension, 'dist/hooks' + extension, 'dist/playable-runtime.js', 'dist/google-ads-runtime.js', 'dist/single-html-runtime.js', 'static/templates/index.ejs', 'i18n/en.js', 'i18n/zh.js', ...(release.host === 'cli' ? ['node_modules/sharp/package.json'] : [])]) {
     if (!files.has(name)) throw new Error('Missing required plugin file: ' + name);
   }
-  const manifest = JSON.parse(files.get('package.json')!.toString());
   if (manifest.version !== release.pluginVersion) throw new Error('Plugin version mismatch');
   if (release.host === 'creator') {
     // Dashboard selects compatible packages with engines.creator; retain Editor's field too.
