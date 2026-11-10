@@ -180,6 +180,7 @@
       "to": "2.4.15",
       "profile": "creator-platform-240_2415",
       "verifiedVersions": [
+        "2.4.0",
         "2.4.12",
         "2.4.15"
       ]
@@ -199,7 +200,10 @@
       "from": "3.6.0",
       "to": "3.6.3",
       "profile": "creator-platform-360_363",
-      "verifiedVersions": []
+      "verifiedVersions": [
+        "3.6.0",
+        "3.6.3"
+      ]
     },
     {
       "name": "370_374",
@@ -216,7 +220,9 @@
       "from": "3.8.0",
       "to": "3.8.2",
       "profile": "creator-platform-380_382",
-      "verifiedVersions": []
+      "verifiedVersions": [
+        "3.8.2"
+      ]
     },
     {
       "name": "383_384",
