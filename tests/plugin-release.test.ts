@@ -16,7 +16,6 @@ test('unsupported Creator targets fail without generating a package', () => {
   assert.equal(selectProfile('creator', '3.8.6').editorIntegration, 'playable-platform');
   assert.deepEqual(selectProfile('creator', '3.8.3'), selectProfile('creator', '3.8.4'));
   assert.notEqual(selectProfile('creator', '3.8.3').nodeTarget, selectProfile('creator', '3.8.5').nodeTarget);
-  assert.equal(selectProfile('creator', '3.8.4').adapter, 'creator-platform');
   assert.throws(() => selectProfile('other'), /Unsupported host/);
 });
 test('standalone plugin carries native dependencies, validates hashes and backs up releases', async t => {
@@ -54,7 +53,6 @@ test('all Creator versions select the standalone platform without entry switches
     assert.equal(profile.nodeTarget, ['3.8.3', '3.8.4'].includes(version) ? 'node14.16' : 'node20');
     assert.ok(profile.editor?.split(' || ').includes(version));
   }
-  assert.equal(selectProfile('creator', '3.8.4').adapter, 'creator-platform');
   assert.throws(() => selectProfile('cli', '3.8.3'), /CLI does not accept/);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'playable-plan-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

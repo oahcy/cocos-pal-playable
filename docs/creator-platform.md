@@ -1,38 +1,27 @@
-> 历史版本新增适配和验收边界见 [历史适配](historical-creators.md)。2.x 使用 simple-build-target，不使用下述 3.x 注册协议。
+# Creator 接入与发布
 
-# Creator 独立 Playable 平台
+插件和构建平台均使用 `playable`。生成、安装和构建命令见 [操作手册](ai-workflow.md)。实际验收范围见 [验证记录](../VALIDATION.md)。
 
-打包核心和渠道逻辑共用；Creator 版本只影响宿主适配、编译目标与 Editor 接入。
-本机十个安装版本已完成三渠道真实构建和本地场景启动验证，版本与验证边界见 VALIDATION.md。3.8.9 源码版另有 UI 构建记录。
+## 版本与启动协议
 
-## 版本与入口
+`compatibility.json` 的 `creatorVersions` 列出可生成的准确版本。分组用于共享适配实现，`verifiedVersions` 单独记录已测版本。发布时取该清单与 cocos-pack 版本清单的交集。
 
-- Creator 3.5.2 使用 `creator-300_352` 适配器和 Node 12 编译目标；仅启动及 settings 协议与 3.8 分开，渠道、压缩和交付逻辑共用。
-- `creatorVersions`：唯一的 Creator 版本映射，逐个列出可生成的 Creator 版本，范围和验证状态见历史适配文档。
-- Creator 3.8.3 起共用 `src/adapters/creator-platform`；3.8.3–3.8.4 输出 Node 14.16 兼容代码，3.8.5–3.8.9 输出 Node 20 兼容代码。
-- 公共选项、交付流程和 sharp 适配位于 `creator-shared`。独立平台不依赖旧 Web Mobile 适配器。
+| 版本组 | 构建适配 | 启动与资源 |
+| --- | --- | --- |
+| 232_234 | Creator 2 simple-build-target，继承 web-mobile | 保留 Web boot，包装 cc.loader 的非 UUID 下载处理器，保留 pack 路由 |
+| 240_2415 | 同一 2.x 构建实现 | 使用 assetManager 管线，将 _preprocessPipe 映射到共享协议 |
+| 300_352 | 旧式 Creator Web 钩子，Node 12 输出 | createApplication 工厂协议、扁平 settings |
+| 360_363 | 旧式 Web 钩子，宿主读取 Web preset 生成加载器 | 适配工厂和 Application 两种导出协议 |
+| 370_374 | 旧式 Web 钩子，使用宿主 module-system 重建浏览器加载器 | 同一协议适配层 |
+| 380_382 | 与 370_374 共用构建实现 | 同一协议适配层 |
+| 383_384 | 现代独立平台，Node 14.16 输出 | Application 类协议 |
+| 385_389 | 现代独立平台，Node 20 输出 | Application 类协议 |
 
-旧 Web Mobile 附加适配、启用开关和入口选择参数已移除。旧安装副本不会自动卸载；升级时需替换旧插件，并新建独立 playable 平台任务。宿主 Web 钩子和浏览器加载器预设仍是独立平台的底层复用能力。
+2.x 使用 `simple-build-target` 和项目 Profile，保留原 `main.js` 与引擎脚本。构建器将 `settings.js` 当作数据对象解析，支持 JSON5 无引号键。2.3 保留 UUID 和 pack 路由，其他资源通过内嵌 Blob 交给原解析器。2.4 复用 assetManager 管线。
 
-## 生成与发布
+3.x 使用 `contributions.builder` 与 `package_version: 2`。3.5 的启动入口使用 `createApplication`。3.7.0 起的旧式 Web 钩子通过宿主 module-system 重建浏览器加载器。较新的宿主继续复用 Web 加载器，构建平台保持 `playable`。
 
-使用 Node 22，从 playable 目录生成独立平台插件：
-
-```powershell
-npm run plugin -- generate --host=creator --creator-version=3.8.4 --out=.local/platform-384
-```
-
-Creator 包无需选择入口；generate、pack 和 verify 均不接受旧的入口选择参数。
-清单中的 `editorIntegration: playable-platform` 表示需要宿主准入，不代表原版 Editor 已支持此平台。
-
-从 cocos-pack 根目录按版本生成安装包：
-
-```powershell
-npm run pack-playable -- --from=3.8.3 --to=3.8.9 --dry-run
-npm run pack-playable -- --from=3.8.3 --to=3.8.9
-```
-
-只处理仓库版本清单与兼容映射的交集。同一 profile 编译一次，输出 `playable/playable_<适配组>/` 和 `CocosPack/v<版本>-playable.zip`。输出仍使用 playable 插件名和现有备份规则。
+Creator 使用宿主 Sharp。2.x 通过 `Editor.App.path` 或 `Editor.url("app://")` 定位 `resources/utils/sharp`。图片压缩默认关闭，启用时要求宿主提供可用的 Sharp。
 
 ## Editor 接入
 
@@ -58,11 +47,11 @@ npm run pack-playable -- --from=3.8.3 --to=3.8.9
 
 ## 多渠道构建面板
 
-独立 playable 平台使用插件自带的 TypeScript 面板：勾选 TikTok、Google Ads 后才展开各自设置，取消勾选保留参数但不参与本次构建。默认沿用旧任务选中的渠道；全部取消时提示并在构建初始化前拒绝执行。
+独立 playable 平台使用插件自带的 TypeScript 面板：勾选渠道后才展开各自设置，取消勾选保留参数但不参与本次构建。默认沿用旧任务选中的渠道；全部取消时提示并在构建初始化前拒绝执行。
 
 每个渠道单独设置输出格式、方向、图片压缩和质量。通常仅单 HTML 显示内嵌编码、有损压缩显示质量；若已保存的值无效，也会显示对应字段供修正。Google Ads 当前仅提供 ZIP。
 
-配置存入 `packages.playable.channels`：
+3.x 配置存入 `packages.playable.channels`。2.x 将渠道配置保存在项目的 `settings/playable.json`。下面是渠道对象示例：
 
 ```json
 {
@@ -79,23 +68,6 @@ npm run pack-playable -- --from=3.8.3 --to=3.8.9
 
 本地 v3 测试包已验证卡片 → 配置 → 构建，但卡片修正仍仅在 Downloads 编译产物中。正式发布需在 `builder-workspace/apps/builder-web` 注册 playable 卡片和素材，并修正卡片列表、外层窗口的场景占位判断，再从源码构建正式卡片包和校验清单。本机没有该仓库；本地 OTA 测试 URL 不能用作正式发布配置。
 
-## Creator 3.5.2 适配边界
-
-生成时使用 `--creator-version=3.5.2`，插件和平台注册名均为 `playable`。
-宿主需提供同名白名单；借用其他平台名的本地验证层不随源码或插件发布。
-
-3.5 没有新版 Application 类和启动委托，适配器调用宿主 Web 钩子生成该版本的 application.js、settings 和浏览器加载器，再按 `createApplication` 协议启动。单 HTML 从内嵌 settings 初始化，并使用共用 assetManager 资源适配。旧 application 模板里的 settings 入口只在交付副本中定点处理；模板不匹配会明确报错，避免全局替换 XMLHttpRequest。原 Web 构建文件不修改。
-
-SDK 和单 HTML 运行时随发布 profile 选择对应启动协议。同 profile 的其他版本仍需独立验收。正式同名插件的完整 UI 链路仍需验证。
-
-## 历史版本分组
-
-独立平台以 OpenPaaS 的范围为基础。Creator 3.7.0 切换了 SystemJS 构建接口，因此将 `360_374` 拆为 `360_363` 和 `370_374`。
-分组声明在 compatibility.json 的 creatorPlatformGroups。多个分组允许指向同一个适配实现，不复制代码；有实际接口差异时再拆分实现。
-
-`300_352` 和 `360_363` 由宿主读取 Web preset 生成浏览器加载器。`370_374` 和 `380_382` 共用旧式 Web 钩子，并在交付前用宿主 module-system 重建浏览器加载器。
-分组范围用于规定适配边界，creatorVersions 仍是实际允许生成的版本清单。未经适配的版本不会因为落在范围内而自动发布。verifiedVersions 单独记录验证版本，扩展发布清单前应核对宿主接口并测试。
-
 ## 适配代码归属
 
 每个发布 profile 显式选择 applicationAdapter；协议一致的版本共用 application-class，旧版当前使用 creator-300_352。
@@ -108,4 +80,36 @@ SDK 和单 HTML 运行时随发布 profile 选择对应启动协议。同 profil
 ## 试玩平台公共选项
 
 独立平台隐藏调试模式、Source Maps、MD5 Cache、资源服务器及远程主包；在 onBeforeInit 中统一固定为关闭或空值，避免旧 Profile 中的隐藏值继续影响构建。Creator 3.5 使用 boolean 可见性配置，3.8 使用 hidden/default 描述。
-名称、输出目录、场景、渠道、纹理压缩与启动图配置保留；项目资源 Bundle 自身的远程配置仍按现有规则校验，不因隐藏控件而自动转为本地资源。原 Web Mobile 附加入口已移除。
+名称、输出目录、场景、渠道、纹理压缩与启动图配置保留；项目资源 Bundle 自身的远程配置仍按现有规则校验，不因隐藏控件而自动转为本地资源。从旧 Web Mobile 附加入口升级时，替换旧插件并新建独立 playable 任务。
+
+## cocos-pack 产物与维护边界
+
+TypeScript 源码、测试、版本 adapter 和文档统一维护于独立仓库 cocos-pal-playable。cocos-pack 只接收生成的 Creator 插件目录，不再保留第二份开发源码。原迁入期间的变更可从 cocos-pack Git 历史追溯。
+
+```text
+cocos-pal-playable/src + runtime + scripts
+    → 按 compatibility.json 编译
+    → cocos-pack/playable/playable_<适配组>/
+    → cocos-pack/CocosPack/v<版本>-playable.zip
+    → Dashboard 下发安装
+```
+
+同适配 profile 本轮只编译、输出一份共享目录：playable_232_234、playable_240_2415、playable_300_352、playable_360_363、playable_370_374、playable_380_382、playable_383_384、playable_385_389。各目标版本仍分别生成 ZIP；版本范围目录名不扩大兼容映射。生成包记录逐文件 SHA-256，cocos-pack 中的产物应提交版本管理；CocosPack ZIP 和 .local 备份不提交。禁止手改产物后反向同步。
+
+## 生成范围与产物管理
+
+源码仓库生成、单包校验和 cocos-pack 封装命令见 [AI 操作手册](ai-workflow.md)。
+
+省略 --root 时，默认使用本仓库旁边的 cocos-pack。版本选择取 cocos-pack/cocos-engine-ccbuild.txt 与 compatibility.json 精确映射的交集；--from / --to 可限制闭区间。未适配版本拒绝输出，不修改引擎或 ccbuild 清单。
+
+发布前校验旧目录归属、清单和哈希。新目录在目标盘暂存并验证后替换；旧目录保存在 cocos-pack/.local/cocos-pack-*/backup-<版本>/。旧 ZIP 由发布工具备份到 CocosPack/backup-*，生成差异清单。不自动删除旧版本产物。
+
+cocos-pack 根目录的 pack-playable 命令只校验并重新封装已有产物，不调用本源码仓库、不编译、无需安装 Playable 的开发依赖。ZIP 根目录直接是 package.json、dist 等文件。没有产物时应先从源码仓库生成。
+
+CLI 包携带 Sharp 生产依赖，Creator 包复用宿主 Sharp。发布清单用于文件完整性校验，平台和架构的实测范围见 [验证记录](../VALIDATION.md)。
+
+## Dashboard 热更约定
+
+Creator 包同时保留 editor 和 engines.creator，由同一适配版本列表生成。Dashboard 使用 engines.creator 判断适用 Creator，使用标准 version 判断更新；package_version: 2 不作为递增发布版本。发布新版时手动递增本仓库 package.json 的 version。
+
+插件与平台名称均为 playable。Dashboard 负责下载、安装，插件不实现自更新。Creator 3.x 插件通过 package.json 的 creator.builder.internal 和 creator.builder.platform（均为布尔值 true）声明内部构建平台。支持此机制的 Creator 从当前版本的全局 builtin-extensions/<版本>/playable/ 目录读取声明，并注册同名平台。正式云端下发和更新后的构建缓存仍需联调。

@@ -1,10 +1,10 @@
 # 试玩配置与交付
 
-CLI 安装见 [README](../README.md)，Creator 操作见 [Creator 独立平台](creator-platform.md)，Google 的专用规则见 [Google Ads](google-ads.md)。
+构建、安装与验收命令见 [操作手册](ai-workflow.md)。
 
 ## 构建配置
 
-CLI 从 packages.playable 读取以下参数；Creator 面板传入同一组参数。
+CLI 从 `packages.playable` 读取以下参数。Creator 可为每个渠道单独配置。
 
 ```json
 {
@@ -24,7 +24,8 @@ CLI 从 packages.playable 读取以下参数；Creator 面板传入同一组参�
 
 | 参数 | 可选值与默认值 |
 | --- | --- |
-| channel | tiktok（默认）、google-ads |
+| channel | tiktok（默认）、google-ads、applovin |
+| storeUrl | AppLovin 必填，使用 HTTPS 商店链接 |
 | outputFormat | channel-default（默认）、directory-zip、single-html；受渠道支持范围限制 |
 | orientation | auto（默认）、portrait、landscape |
 | imageCompression | none（默认）、lossy（PNG 量化、JPEG 重编码）、webp（WebP 有损） |
@@ -41,17 +42,7 @@ CLI 从 packages.playable 读取以下参数；Creator 面板传入同一组参�
 
 TikTok 单 HTML 输出 tiktok.experimental.html 和 single-html.report.json，与 ZIP 互不覆盖。它只用于格式验证，不表示 TikTok 接受此投放格式；报告标记 channelDefaultFormat=false，并保守沿用渠道大小上限。Google 当前只支持 ZIP。
 
-已有试玩构建目录可重新封装为 HTML：
-
-```powershell
-npm run build
-npm run single-html -- <试玩构建目录> 80 base122
-npm run preview -- <ZIP或HTML路径> --mock-sdk
-```
-
-single-html 命令省略质量参数时保留原图。预览显式传入 --mock-sdk 时模拟渠道 SDK，传入 --mock-api 时注入统一 MockAdapter，两者互斥。统一 Mock 要求新插件生成的 runtime 标记及工厂入口；旧产物可继续使用 --mock-sdk。服务仅修改响应，产物保持原样。
-
-npm run verify:preview -- "产物.zip或html" 使用统一 Mock 和本机 Chrome 自动验收；可传 --browser=msedge 和 --timeout=30000。验证等待场景加载和后续两帧引擎运行，脚本错误、资源失败和超时使命令退出 1，通过退出 0。验证范围是本地启动，官方渠道行为仍按各渠道要求验收。
+重新封装、本地预览和自动验收见 [AI 操作手册](ai-workflow.md#本地预览和自动验收)。
 
 ## 图片压缩
 
@@ -60,6 +51,10 @@ lossy 对普通 8 位 PNG 做调色板量化，保持路径、尺寸与 PNG 格�
 处理发生在资源收集后、ZIP/HTML 编码前，原素材和中间构建文件不变。只有 PNG 自身及其 DEFLATE 体积都减小时才采用压缩结果，否则保留原文件。报告 images 记录逐图结果，最终包大小见 bytes。
 
 CLI 插件携带 sharp；Creator 从编辑器目录加载宿主版本。关闭压缩时不加载它，广告包中不包含该工具。
+
+`webp` 对 PNG/JPEG 转码为有损 WebP，沿用 imageQuality（1–100），保留透明通道、尺寸与资源路径；实际格式由文件内容识别，因此能处理扩展名为 .jpg 的 PNG。动画、高位深、已有 WebP 保留原样；仅在裸文件和 ZIP 压缩后均变小时替换。单 HTML 的 Blob 和 CSS data URL 根据实际内容生成 MIME。目录 ZIP 保留原扩展名，由浏览器识别图片数据，需在目标广告 WebView 验收；法线图、数据纹理等像素敏感素材不宜开启。
+
+页面的 PNG+JPEG 选项（imageCompression=lossy）也处理 JPEG：按实际内容识别，PNG 做调色板量化，JPEG 按同一 imageQuality 重新编码为 JPEG，保持各自格式、路径和尺寸。PNG 不转成 JPEG，透明图仍保留 PNG；只在裸文件和 ZIP 压缩后均更小时替换。JPEG 再编码仍会产生有损变化，不新增独立 JPEG 选项。
 
 ## 单 HTML 的资源加载
 
@@ -98,6 +93,68 @@ TikTok SDK 曾观察到读取 __playable_ready_resources__.json 用于首屏监�
 
 官方参考：[素材规范](https://ads.tiktok.com/resources/help/article/playable-ads?lang=en)、[创建与测试](https://ads.tiktok.com/resources/help/article/how-to-create-playable-ads-on-tiktok-ads-manager?lang=en)。
 
-`webp` 对 PNG/JPEG 转码为有损 WebP，沿用 imageQuality（1–100），保留透明通道、尺寸与资源路径；实际格式由文件内容识别，因此能处理扩展名为 .jpg 的 PNG。动画、高位深、已有 WebP 保留原样；仅在裸文件和 ZIP 压缩后均变小时替换。单 HTML 的 Blob 和 CSS data URL 根据实际内容生成 MIME。目录 ZIP 保留原扩展名，由浏览器识别图片数据，需在目标广告 WebView 验收；法线图、数据纹理等像素敏感素材不宜开启。
+## 渠道专用规则
 
-页面的 PNG+JPEG 选项（imageCompression=lossy）也处理 JPEG：按实际内容识别，PNG 做调色板量化，JPEG 按同一 imageQuality 重新编码为 JPEG，保持各自格式、路径和尺寸。PNG 不转成 JPEG，透明图仍保留 PNG；只在裸文件和 ZIP 压缩后均更小时替换。JPEG 再编码仍会产生有损变化，不新增独立 JPEG 选项。
+### Google Ads（App campaigns）
+
+官方规范：https://support.google.com/google-ads/answer/9981650?hl=en （2026-10-16 核对）。
+
+渠道标识为 `google-ads`，配置见 [Google Ads 配置示例](../examples/google-ads.build.json)。
+
+按 [CLI 联调流程](ai-workflow.md#cli-联调与-cocos-pack-发布) 构建，配置文件选用上述 Google Ads 示例。
+
+交付文件为 `<构建目录>/playable-google-ads/google-ads.zip`，同目录生成 `report.json`。
+ZIP 根目录包含 `index.html`，不生成 TikTok 的 `config.json`。
+默认仅支持多文件 ZIP；请求 `single-html` 会明确拒绝。
+
+#### 游戏接口
+
+在真实用户点击中调用 `playable.openStore()`，由 Google 适配器调用 `window.ExitApi.exit()`。
+不传商店 URL，不自行跳转。SDK 使用官方 `exitapi.js`，在 head 中阻塞加载，先于运行时。
+缺少 Exit API 时明确报错；普通浏览器验证使用 [渠道 SDK Mock 预览](ai-workflow.md#本地预览和自动验收)。
+
+`finishNotification=false`，`containerLifecycle=false`：`finish()` 只标记本地结束，不跳转。
+页面 visibilitychange 控制暂停与恢复，首次 pointerdown 之前保持静音策略。
+业务音频仍须遵守 `playable.onMuteChange`；这不证明所有业务音频都已自动接入。
+
+#### 构建校验
+
+- ZIP 不超过 5,000,000 字节（共享字段使用 exclusive cap，因此值为 5,000,001）。
+- ZIP 规范上限为 512 个文件；超限记录错误并保留 ZIP，报告标记 fileCountLimitExceeded=true，不代表满足投放规范。保留 UTF-8 页面与响应式画布。
+- head 中生成唯一 `ad.orientation`：portrait、landscape 或 portrait,landscape。
+- DOCTYPE、html/body 显式闭合标签、官方 Exit API 的位置和加载顺序。
+- 复用公共相对路径、文件存在性、import-map、Bundle 和远程资源配置检查。
+- Google 仅允许 Google web fonts。包内 ttf/otf/woff 等字体逐项列入 pending，需核对来源及上传接受情况；扩展名不能证明字体来源。
+- 外部引用白名单限于 Exit API 和官方规范列出的 Google 托管库地址。
+
+静态检查不分析任意 JavaScript 的动态 URL、存储调用、动态 DOM 或网络行为。
+业务必须移除 localStorage 等本地存储调用，并核对 SVG 显式闭合、音频与布局。
+pending 会保留这些运行时和人工审核事项；本地 packaged 不等于 Google 接受素材。
+
+该渠道只支持 Google Ads 应用安装试玩素材，不接入 AdMob 原生 SDK、Google Play Billing 或自动投放 API。
+不承诺其他 Google 广告类型共享这一套规则。
+
+### AppLovin
+
+在独立 Playable 平台勾选 AppLovin，可与 TikTok、Google Ads 同时构建。
+输出为 `<构建目录>/playable-applovin/applovin.html`，渠道默认即单 HTML，不提供 ZIP。
+
+- `orientation` 必须为 `auto`，游戏需实际支持横竖屏。
+- `storeUrl` 填入实际投放应用的 HTTPS 商店链接；由 `playable.openStore()` 调用 `mraid.open(storeUrl)`。
+- `embeddedEncoding` 可选 `base64` / `base122`；图片压缩沿用 `imageCompression`、`imageQuality`。
+- 最大 5,000,000 字节，超限记录错误并保留产物，不表示可以投放。
+
+MRAID 由广告容器提供，通过 `mraid.js` 加载，不附带模拟 SDK。运行时等待 MRAID ready，再查询可见性、启动场景；隐藏时通过已有 pause/mute 事件通知游戏。MRAID 2.0 没有通用试玩结束上报，`finish()` 只作本地标记。
+
+开发预览使用 [渠道 SDK Mock](ai-workflow.md#本地预览和自动验收)。游戏应响应 `onMuteChange`，在首次交互后计时，禁止自动跳转或首次交互直接跳转。实际音频、横竖屏、动态网络请求及 WebGL 失败恢复仍需项目和真机验证；静态校验无法证明这些行为全部合规。
+
+官方验证入口及规范：https://p.applov.in/playablePreview?create=1
+先验证官方网页预览，再使用 AppLovin Playable Preview App 验证；本地报告不代表官方验收。
+
+#### Playable Analytics 待办
+
+暂不接入 `trackEvent`，不改变当前启动、交互和下载跳转流程；目前不提供挑战进度、成功/失败等 Analytics 数据。
+
+后续增加可选 `playable.trackEvent`，由 AppLovin adapter 检查容器的 `ALPlayableAnalytics` 并转发官方预定义事件。事件名、顺序和调用时机按官方规范实现；不能假定生命周期事件会自动上报，也不能把 SDK ready、`finish()` 分别直接等同于内容可交互或结束页展示。
+
+官方文档：https://support.applovin.com/en/growth/promoting-your-apps/welcome-to-applovin/playable-analytics-integration

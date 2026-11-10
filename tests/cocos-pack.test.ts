@@ -54,7 +54,11 @@ test('cocos-pack generates all shared targets, verifies ZIPs and backs up replac
   for (const target of plan.targets) {
     if (!expected.has(target.profile)) expected.set(target.profile, readFiles(target.directory));
     assert.deepEqual(readFiles(target.directory), expected.get(target.profile));
-    assert.equal((await verifyArchive(target.archive)).profile, target.profile);
+    const config = require(path.join(target.directory, 'dist/config.cjs'));
+    assert.deepEqual(Object.keys(config.configs), ['playable']);
+    const release = await verifyArchive(target.archive);
+    assert.equal(release.profile, target.profile);
+    assert.equal(release.editorIntegration, 'playable-platform');
   }
   const archive = plan.targets[2].archive;
   const previous = fs.readFileSync(archive);
@@ -62,18 +66,4 @@ test('cocos-pack generates all shared targets, verifies ZIPs and backs up replac
   assert.deepEqual(fs.readFileSync(archive), previous);
   assert.ok(fs.readdirSync(path.dirname(archive)).some(name => name.startsWith('backup-')));
   assert.deepEqual(JSON.parse(fs.readFileSync(archive + '.diff.json', 'utf8')), { added: [], removed: [], changed: [] });
-});
-
-
-test('cocos-pack always generates independent playable platforms', async t => {
-  const root = fixture(t);
-  const plan = createPackPlan(['3.8.4', '3.8.6'], root);
-  await executePackPlan(plan);
-  for (const target of plan.targets) {
-    const config = require(path.join(target.directory, 'dist/config.cjs'));
-    assert.deepEqual(Object.keys(config.configs), ['playable']);
-    const release = await verifyArchive(target.archive);
-    assert.equal(release.profile, target.profile);
-    assert.equal(release.editorIntegration, 'playable-platform');
-  }
 });
