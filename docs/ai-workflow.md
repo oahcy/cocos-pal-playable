@@ -1,6 +1,6 @@
 # 操作手册与 AI 执行流程
 
-在 `cocos-pal-playable` 源码仓库根目录执行命令。Windows 示例使用 PowerShell 和 Node.js 22。先核对目标 Creator 版本、项目副本、输出目录和验收范围。有锁定依赖时用 `npm ci` 初始化。临时配置、插件和日志放在 `.local/`，每次使用新的输出名。
+在 `cocos-pal-playable` 源码仓库根目录执行命令。使用 Node.js 22。通用命令可在 PowerShell 和 macOS 终端运行。先核对目标 Creator 版本、项目副本、输出目录和验收范围。有锁定依赖时用 `npm ci` 初始化。临时配置、插件和日志放在 `.local/`，每次使用新的输出名。
 
 ## 选择测试入口
 
@@ -18,17 +18,17 @@
 
 从 `compatibility.json` 的 `creatorVersions` 选择准确版本。以下用 3.5.2 举例，`generate` 的输出目录必须是新目录。
 
-```powershell
+```sh
 npm run plugin -- generate --host=creator --creator-version=3.5.2 --out=.local/plugin-352
 npm run plugin -- pack --input=.local/plugin-352 --out=.local/playable-352.zip
 npm run plugin -- verify --input=.local/playable-352.zip
 ```
 
-生成目录直接包含 `package.json`、`dist` 和发布清单。每条命令成功后再执行下一条。支持内置构建插件的 Windows 测试宿主可将生成目录安装为 `%USERPROFILE%\.CocosCreator\builtin-extensions\<版本>\playable\`。先核对对应版本的准入能力和已启用副本，保留已有安装的备份。安装后对照发布清单检查文件，再启动目标 Creator。版本差异和宿主配置见 [Creator 接入](creator-platform.md) 及 [版本与启动协议](creator-platform.md#版本与启动协议)。
+生成目录直接包含 `package.json`、`dist` 和发布清单。每条命令成功后再执行下一条。支持内置构建插件的宿主可将生成目录安装到目标 Creator 用户数据根目录下的 `builtin-extensions/<版本>/playable/`。从目标宿主的配置或启动日志确认用户数据根目录。先核对对应版本的准入能力和已启用副本，保留已有安装的备份。安装后对照发布清单检查文件，再启动目标 Creator。版本差异和宿主配置见 [Creator 接入](creator-platform.md) 及 [版本与启动协议](creator-platform.md#版本与启动协议)。
 
 ## 在隔离工程构建广告包
 
-使用与目标 Creator 兼容的项目副本。把下方的 `$editorExe`、`$project` 和 `$buildConfig` 设为实际绝对路径。3.x 构建配置示例保存到 `$buildConfig` 指向的文件，`outputName` 每轮取新值。
+使用与目标 Creator 兼容的项目副本。把下方的 `$editorExe`、`$project` 和 `$buildConfig` 设为本机绝对路径。Windows 选 Creator 的可执行文件，macOS 选应用包内 `Contents/MacOS/` 中的可执行文件。3.x 构建配置示例保存到 `$buildConfig` 指向的文件，`outputName` 每轮取新值。
 
 ```json
 {
@@ -50,11 +50,22 @@ npm run plugin -- verify --input=.local/playable-352.zip
 }
 ```
 
+Windows PowerShell
+
 ```powershell
 # Creator 3.x
-& $editorExe --project $project --build "configPath=$buildConfig"
+& "$editorExe" --project "$project" --build "configPath=$buildConfig"
 # Creator 2.x
-& $editorExe --path $project --build "platform=playable;buildPath=./build-ai-check;debug=false;sourceMaps=false;md5Cache=false;encryptJs=false;embedWebDebugger=false"
+& "$editorExe" --path "$project" --build "platform=playable;buildPath=./build-ai-check;debug=false;sourceMaps=false;md5Cache=false;encryptJs=false;embedWebDebugger=false"
+```
+
+macOS zsh 或 bash
+
+```sh
+# Creator 3.x
+"$editorExe" --project "$project" --build "configPath=$buildConfig"
+# Creator 2.x
+"$editorExe" --path "$project" --build "platform=playable;buildPath=./build-ai-check;debug=false;sourceMaps=false;md5Cache=false;encryptJs=false;embedWebDebugger=false"
 ```
 
 2.x 先在项目副本的 `settings/playable.json` 保存形如 `{"channels":{...}}` 的配置，渠道字段沿用上面的示例。AppLovin 的示例链接用于本地测试。质量和压缩模式见 [交付参数](DELIVERY.md)。
@@ -63,9 +74,9 @@ npm run plugin -- verify --input=.local/playable-352.zip
 
 ## 本地预览和自动验收
 
-```powershell
-npm run preview -- "D:/tests/playable-tiktok/tiktok.zip" --mock-api
-npm run verify:preview -- "D:/tests/playable-tiktok/tiktok.zip" --expected-version=3.7.3
+```sh
+npm run preview -- "./artifacts/playable-tiktok/tiktok.zip" --mock-api
+npm run verify:preview -- "./artifacts/playable-tiktok/tiktok.zip" --expected-version=3.7.3
 npm run verify:preview -- --batch=.local/preview-cases.json
 ```
 
@@ -90,24 +101,26 @@ npm run verify:preview -- --batch=.local/preview-cases.json
 
 CLI 联调先初始化 cocos-cli，再从插件仓库执行构建和安装。最后切到 cocos-cli 工作目录构建项目。
 
-```powershell
+示例假定插件仓库、cocos-cli、cocos-pack 和项目并列放置。目录不同就替换成实际路径，路径含空格时保留引号。
+
+```sh
 npm run build
-npm run install:cli -- D:/code/cocos-cli
-Push-Location D:/code/cocos-cli
-try {
-  node dist/cli.js build -j $project -p playable -c D:/code/cocos-pal-playable/examples/tiktok.build.json
-} finally {
-  Pop-Location
-}
+npm run install:cli -- "../cocos-cli"
+```
+
+切到 cocos-cli 根目录后执行项目构建。
+
+```sh
+node dist/cli.js build -j "../my-game" -p playable -c "../cocos-pal-playable/examples/tiktok.build.json"
 ```
 
 CLI 需能按 HTML5 类型选择 SystemJS Web 加载器。需要独立 CLI 插件时，用 `npm run plugin -- generate --host=cli --out=.local/plugin-cli`。生成包携带 Sharp 生产依赖，可作为 `install:cli` 的第二个位置参数。
 
-准备发布时先用 `--dry-run` 查看范围，再执行同步。以下限定为一个目标版本。
+回到插件仓库根目录。准备发布时先用 `--dry-run` 查看范围，再执行同步。以下限定为一个目标版本。
 
-```powershell
-npm run pack:cocos -- --root=D:/code/cocos-pack 3.5.2 --dry-run
-npm run pack:cocos -- --root=D:/code/cocos-pack 3.5.2
+```sh
+npm run pack:cocos -- "--root=../cocos-pack" 3.5.2 --dry-run
+npm run pack:cocos -- "--root=../cocos-pack" 3.5.2
 ```
 
 省略版本处理清单交集，`--from` 和 `--to` 选择闭区间。从 cocos-pack 根目录执行 `npm run pack-playable -- 3.5.2` 可重新封装已有产物。输出、备份和 Dashboard 规则见 [cocos-pack 产物管理](creator-platform.md#cocos-pack-产物与维护边界)。

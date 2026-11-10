@@ -12,7 +12,7 @@
 
 使用 Node.js 22。从仓库根目录安装依赖并运行回归。
 
-```powershell
+```sh
 npm ci
 npm run typecheck
 npm test
@@ -21,9 +21,9 @@ npm run verify:panel
 
 `verify:panel` 使用本机 Chrome 或 Edge 检查 3.x 面板。验收已有广告包时，替换下方路径和预期 Creator 版本。
 
-```powershell
-npm run preview -- "D:/tests/tiktok.zip" --mock-api
-npm run verify:preview -- "D:/tests/tiktok.zip" --expected-version=3.7.3
+```sh
+npm run preview -- "./artifacts/tiktok.zip" --mock-api
+npm run verify:preview -- "./artifacts/tiktok.zip" --expected-version=3.7.3
 npm run demo:sdk
 ```
 
@@ -31,34 +31,36 @@ npm run demo:sdk
 
 以 3.5.2 为例。每次生成使用新目录。
 
-```powershell
+```sh
 npm run plugin -- generate --host=creator --creator-version=3.5.2 --out=.local/plugin-352
 npm run plugin -- pack --input=.local/plugin-352 --out=.local/playable-352.zip
 npm run plugin -- verify --input=.local/playable-352.zip
 ```
 
-支持全局内置扩展的 Windows 测试宿主可将生成目录安装到 `%USERPROFILE%\.CocosCreator\builtin-extensions\3.5.2\playable\`。安装后重启 Creator，在构建发布面板选择 Playable 平台和目标渠道。构建完成后，在输出目录的 `playable-<渠道>/` 下查看广告包和报告。宿主准入与版本范围见 [Creator 接入与发布](docs/creator-platform.md)。
+支持全局内置扩展的宿主可将生成目录安装到 Creator 用户数据根目录下的 `builtin-extensions/3.5.2/playable/`。实际根目录以目标宿主为准。安装后重启 Creator，在构建发布面板选择 Playable 平台和目标渠道。构建完成后，在输出目录的 `playable-<渠道>/` 下查看广告包和报告。宿主准入与版本范围见 [Creator 接入与发布](docs/creator-platform.md)。
 
 ### CLI 联调与发布
 
 先初始化 cocos-cli，再从本仓库执行以下命令。把示例项目路径换成实际项目。
 
-```powershell
+示例假定插件仓库、cocos-cli、cocos-pack 和项目并列放置。目录不同就替换成实际路径，路径含空格时保留引号。
+
+```sh
 npm run build
-npm run install:cli -- D:/code/cocos-cli
-Push-Location D:/code/cocos-cli
-try {
-  node dist/cli.js build -j D:/projects/my-game -p playable -c D:/code/cocos-pal-playable/examples/tiktok.build.json
-} finally {
-  Pop-Location
-}
+npm run install:cli -- "../cocos-cli"
 ```
 
-同步指定版本到 cocos-pack 前先预览计划。
+切到 cocos-cli 根目录后执行项目构建。
 
-```powershell
-npm run pack:cocos -- --root=D:/code/cocos-pack 3.5.2 --dry-run
-npm run pack:cocos -- --root=D:/code/cocos-pack 3.5.2
+```sh
+node dist/cli.js build -j "../my-game" -p playable -c "../cocos-pal-playable/examples/tiktok.build.json"
+```
+
+回到插件仓库根目录，再预览同步计划。
+
+```sh
+npm run pack:cocos -- "--root=../cocos-pack" 3.5.2 --dry-run
+npm run pack:cocos -- "--root=../cocos-pack" 3.5.2
 ```
 
 ## 使用文档
