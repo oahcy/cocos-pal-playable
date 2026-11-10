@@ -72,6 +72,16 @@ npm run verify:preview -- "产物.html" --browser=chrome --timeout=30000 --expec
 
 原渠道 SDK Mock 仍使用 npm run preview -- "产物.zip" --mock-sdk，适用于渠道接口映射检查和旧产物。两种 Mock 模式互斥。按钮和结束 UI 由业务实现，下载点击调用 playable.openStore()。
 
+## 面板自动回归
+
+```powershell
+npm run verify:panel
+```
+
+无需启动 Creator 或执行工程构建。使用本机 Chrome（可传 `--browser=msedge`），按正式插件的同一编译方法生成实际 panel.cjs，覆盖 3.x 共用面板的 Node 12、14.16、20 三组编译目标（3.5.2 / 3.8.3 / 3.8.8）。在隔离的浏览器上下文中自动检查渠道展开/收起、格式约束、PNG+JPEG/WebP/不压缩、质量边界及非法值、商店 URL 校验、宿主更新、只读及监听清理。
+
+测试宿主独立接收 `update` 事件并保存到 localStorage，重新加载实际面板后核对恢复值，以及宿主收集到的完整任务配置。面板没有自己的构建按钮，因此这里只验证配置事件和收集边界，不假装验证 Editor 的真实任务提交。Editor 翻译、存储和传输为模拟实现，不覆盖平台注册、真实构建页面路由及 Editor 的持久化机制。2.x Vue 面板尚未纳入此浏览器回归。浏览器检查独立于 npm test，不为普通单元测试新增浏览器安装要求。
+
 ## SDK 渠道验收 Demo
 
 npm run demo:sdk 生成极简 SDK 测试页面，输出 generated/sdk-demo/ 下的 TikTok ZIP、Google Ads ZIP 和 AppLovin 单 HTML。页面覆盖统一 API 全部属性、方法与退订函数，使用真实渠道 Adapter；标题、商店链接及输出目录集中在 examples/sdk-demo/config.json，也可通过 --config 指定配置。详细操作见 [SDK Demo](examples/sdk-demo/README.md)。

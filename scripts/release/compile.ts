@@ -26,13 +26,7 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
     }] : [],
     minify: true, sourcemap: false,
   });
-  if (profile.editorIntegration) {
-    await esbuild.build({
-      entryPoints: [path.join(root, 'src/adapters', profile.editorIntegration === 'simple-build-target' ? 'creator-2x' : 'creator-platform', 'panel.ts')],
-      outfile: path.join(output, 'dist/panel.cjs'), bundle: true, platform: 'node',
-      format: 'cjs', target: profile.nodeTarget, minify: true, sourcemap: false,
-    });
-  }
+  if (profile.editorIntegration) await compileCreatorPanel(output, profile);
   await esbuild.build({ entryPoints: ['en', 'zh'].map(name => path.join(root, 'i18n', name + '.ts')), outdir: path.join(output, 'i18n'), bundle: true, platform: 'node', format: 'cjs', banner: { js: '// Generated from TypeScript. Do not edit.' } });
   // Emit only the selected adapter's bootstrap and browser implementation.
   fs.copyFileSync(path.join(applicationDir, 'bootstrap.ts.ejs'), path.join(output, 'dist/bootstrap.ts.ejs'));
@@ -46,4 +40,14 @@ export async function compilePlugin(output: string, profile = selectProfile()) {
       alias: { '@playable/host-runtime': path.join(applicationDir, 'runtime.ts') },
     });
   }
+}
+
+/** Production and browser regression must compile the same panel entry with the same options. */
+export async function compileCreatorPanel(output: string, profile: ReturnType<typeof selectProfile>) {
+  if (!profile.editorIntegration) throw new Error('Creator panel compilation requires a Creator profile');
+  await esbuild.build({
+    entryPoints: [path.join(root, 'src/adapters', profile.editorIntegration === 'simple-build-target' ? 'creator-2x' : 'creator-platform', 'panel.ts')],
+    outfile: path.join(output, 'dist/panel.cjs'), bundle: true, platform: 'node',
+    format: 'cjs', target: profile.nodeTarget, minify: true, sourcemap: false,
+  });
 }

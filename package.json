@@ -24,6 +24,7 @@
     "plugin": "tsx scripts/plugin.ts",
     "pack:cocos": "tsx scripts/cocos-pack.ts",
     "verify:preview": "tsx scripts/verify-preview.ts",
+    "verify:panel": "tsx scripts/verify-panel.ts",
     "demo:sdk": "tsx scripts/sdk-demo.ts"
   },
   "contributes": {
